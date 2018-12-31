@@ -54,8 +54,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         val textureView = previewView.textureView
         sample_text = findViewById<TextView>(R.id.sample_text)
         imageView = findViewById<ImageView>(R.id.zspimageView)
-        val width = 800
-        val height = 800
+        val width = 1024
+        val height = 768
 
         try {
             PreferencesUtil.initPrefs(this)
