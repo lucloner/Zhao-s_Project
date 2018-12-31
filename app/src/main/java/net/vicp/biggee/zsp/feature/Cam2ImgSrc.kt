@@ -23,7 +23,12 @@ class Cam2ImgSrc(context: Context) : ImageSource(), ICameraControl.OnFrameListen
         cameraControl.setOnFrameListener(this)
     }
 
+    companion object {
+        private const val logtag = "Z's P-C2IS-"
+    }
+
     override fun onPreviewFrame(data: Bitmap, rotation: Int, width: Int, height: Int) {
+//        Log.v(logtag,data.byteCount.toString())
         var w = width
         var h = height
 
@@ -62,12 +67,10 @@ class Cam2ImgSrc(context: Context) : ImageSource(), ICameraControl.OnFrameListen
     }
 
     override fun start() {
-        super.start()
         cameraControl.start()
     }
 
     override fun stop() {
-        super.stop()
         cameraControl.stop()
     }
 

@@ -1,6 +1,9 @@
 package net.vicp.biggee.zsp.feature
 
 
+//import androidx.appcompat.app.AppCompatActivity
+//import com.baidu.aip.ofr.R
+//import kotlinx.android.synthetic.main.activity_main.*
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -9,7 +12,6 @@ import android.support.v7.app.AppCompatActivity
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
-//import androidx.appcompat.app.AppCompatActivity
 import com.baidu.aip.ImageFrame
 import com.baidu.aip.api.FaceApi
 import com.baidu.aip.db.DBManager
@@ -22,13 +24,11 @@ import com.baidu.aip.face.camera.ICameraControl
 import com.baidu.aip.manager.FaceEnvironment
 import com.baidu.aip.manager.FaceLiveness
 import com.baidu.aip.manager.FaceSDKManager
-//import com.baidu.aip.ofr.R
 import com.baidu.aip.utils.PreferencesUtil
 import com.baidu.idl.facesdk.FaceInfo
 import com.baidu.idl.facesdk.FaceTracker
 import com.tapadoo.alerter.Alerter
 import net.vicp.biggee.zsp.R
-//import kotlinx.android.synthetic.main.activity_main.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -43,8 +43,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private var identityStatus = FEATURE_DATAS_UNREADY
     private val es = Executors.newSingleThreadScheduledExecutor()
     private var timeStamp: Long = System.currentTimeMillis()
-    private lateinit var imageView : ImageView
-    private lateinit var sample_text : TextView
+    private lateinit var imageView: ImageView
+    private lateinit var sample_text: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,10 +55,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         imageView = findViewById<ImageView>(R.id.zspimageView)
         val width = 1080
         val height = 1920
-
-        // Example of a call to a native method
-//        sample_text.text = stringFromJNI()
-
 
         try {
             PreferencesUtil.initPrefs(this)
@@ -89,7 +85,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         }
 
         cameraImageSource.setCameraFacing(ICameraControl.CAMERA_FACING_FRONT)
-        //cameraImageSource.start()
+        cameraImageSource.start()
     }
 
     override fun initStart() {
@@ -110,8 +106,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
         faceDetectManager = FaceDetectManager(applicationContext)
         FaceSDKManager.getInstance().faceDetector.setMinFaceSize(200)
-        faceDetectManager?.imageSource = cameraImageSource
-        faceDetectManager?.faceFilter?.setAngle(20)
+        faceDetectManager!!.imageSource = cameraImageSource
+        faceDetectManager!!.faceFilter.setAngle(20)
         FaceSDKManager.getInstance().faceDetector.setNumberOfThreads(4)
         es.execute {
             Thread.currentThread().priority = Thread.MAX_PRIORITY
@@ -122,12 +118,12 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             displaytxt("底库人脸个数：$count")
             identityStatus = IDENTITY_IDLE
         }
-        faceDetectManager?.setOnFaceDetectListener(this@MainActivity)
-        faceDetectManager?.setOnTrackListener(this@MainActivity)
-        es.schedule({
-            faceDetectManager?.start()
-            faceDetectManager?.setUseDetect(true)
-        }, 1, TimeUnit.SECONDS)
+        faceDetectManager!!.setOnFaceDetectListener(this@MainActivity)
+        faceDetectManager!!.setOnTrackListener(this@MainActivity)
+
+        es.schedule({ faceDetectManager!!.start() }, 1, TimeUnit.SECONDS)
+        faceDetectManager!!.setUseDetect(true)
+
     }
 
     override fun initFail(errorCode: Int, msg: String?) {
@@ -209,12 +205,11 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
 
     private fun toast(s: String) {
-//        handler.post {
-//            Alerter.create(this)
-//                    .setTitle(title.toString())
-//                    .setText(s)
-//                    .show()
-//        }
+        Alerter.create(this)
+                .setTitle(title.toString())
+                .setText(s)
+                .hideIcon()
+                .show()
     }
 
     private fun displaytxt(s: String) {
@@ -234,20 +229,9 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         faceDetectManager?.stop()
     }
 
-    /**
-     * A native method that is implemented by the 'native-lib' native library,
-     * which is packaged with this application.
-     */
-    external fun stringFromJNI(): String
-
     companion object {
         private const val FEATURE_DATAS_UNREADY = 1
         private const val IDENTITY_IDLE = 2
         private const val IDENTITYING = 3
-
-        // Used to load the 'native-lib' library on application startup.
-        init {
-//            System.loadLibrary("native-lib")
-        }
     }
 }

@@ -44,13 +44,13 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     private lateinit var texture: SurfaceTexture
     private lateinit var surface: Surface
     private var displayOrientation: Int = 0
-    private lateinit var session: CameraCaptureSession
+    private var session: CameraCaptureSession? = null
     private var data: ByteArray? = null
     private var stoped = true
     private var previewFrame: Rect? = null
     private var timenow = System.currentTimeMillis()
     private var timestart = timenow
-    private lateinit var camera: CameraDevice
+    private var camera: CameraDevice? = null
     private val flashMode = CameraMetadata.FLASH_MODE_OFF
     private var skippedFrame = 0
     private lateinit var mRGBframeBitmap: Bitmap
@@ -61,8 +61,8 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     private var imageReader: ImageReader = ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2)
     private lateinit var callback: PermissionCallback
     var sdkOk: Boolean = false
-    private lateinit var backgroundThread: HandlerThread
-    private lateinit var handler: Handler
+    private var backgroundThread: HandlerThread? = null
+    private var handler: Handler? = null
 
     companion object {
         private const val hardwareDelay = 1000
@@ -88,17 +88,17 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      */
     private fun startBackgroundThread() {
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
-        handler = Handler(backgroundThread.looper)
+        handler = Handler(backgroundThread!!.looper)
     }
 
     /**
      * Stops the background thread and its [Handler].
      */
     private fun stopBackgroundThread() {
-        backgroundThread.quitSafely()
+        backgroundThread?.quitSafely()
         try {
-            backgroundThread.join()
-            handler.removeCallbacks(null)
+            backgroundThread?.join()
+            handler?.removeCallbacks(null)
         } catch (e: InterruptedException) {
             e.printStackTrace()
         }
@@ -309,7 +309,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         }
         Handler().post {
             mRGBframeBitmap = textureView.bitmap
-            if (sdkOk) {
+            if (sdkOk && mRGBframeBitmap != null) {
                 listener.onPreviewFrame(mRGBframeBitmap, 0, mRGBframeBitmap.width, mRGBframeBitmap.height)
             }
         }
@@ -360,7 +360,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             val camCnt = camIDs.size
             cameraFacing = if (cameraFacing < camCnt) cameraFacing else camCnt - 1
 
-            handler.postDelayed({
+            handler?.postDelayed({
                 try {
                     var thisActivity: AppCompatActivity? = null
                     if (context is AppCompatActivity) {
@@ -427,8 +427,8 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     }
 
     override fun pause() {
-        session.close()
-        camera.close()
+        session?.close()
+        camera?.close()
         stoped = true
     }
 
@@ -519,7 +519,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             if (!output) {
                 Cam2.logOutput("s", "camDie!:$skippedFrame")
                 stoped = true
-                handler.postAtFrontOfQueue {
+                handler?.postAtFrontOfQueue {
                     Handler().post {
                         pause()
                         start()
