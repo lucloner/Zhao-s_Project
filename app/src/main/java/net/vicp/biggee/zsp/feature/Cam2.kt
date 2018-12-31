@@ -445,8 +445,8 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
 
     override fun setPreferredPreviewSize(width: Int, height: Int) {
-        this.width = width
-        this.height = height
+        this.width = Math.max(width, height)
+        this.height = Math.min(width, height)
     }
 
     /**
