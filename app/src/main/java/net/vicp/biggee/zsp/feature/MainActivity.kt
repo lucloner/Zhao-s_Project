@@ -86,6 +86,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         }
 
         previewView.rotation = -90f
+        textureView.minimumWidth = width
+        textureView.minimumHeight = height
 
         cameraImageSource.setCameraFacing(ICameraControl.CAMERA_FACING_FRONT)
         cameraImageSource.start()
