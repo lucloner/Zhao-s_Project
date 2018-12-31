@@ -9,7 +9,7 @@ import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AppCompatActivity
-import android.view.View
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import com.baidu.aip.ImageFrame
@@ -19,6 +19,7 @@ import com.baidu.aip.entity.Group
 import com.baidu.aip.face.FaceDetectManager
 import com.baidu.aip.face.FaceFilter
 import com.baidu.aip.face.PreviewView
+import com.baidu.aip.face.TexturePreviewView
 import com.baidu.aip.face.camera.CameraView
 import com.baidu.aip.face.camera.ICameraControl
 import com.baidu.aip.manager.FaceEnvironment
@@ -49,12 +50,12 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.zsp_activity_main)
-        val previewView = findViewById<View>(R.id.zsppreviewView) as PreviewView
+        val previewView = findViewById<FrameLayout>(R.id.zsppreviewView) as TexturePreviewView
         val textureView = previewView.textureView
         sample_text = findViewById<TextView>(R.id.sample_text)
         imageView = findViewById<ImageView>(R.id.zspimageView)
-        val width = 1080
-        val height = 1920
+        val width = 768
+        val height = 1024
 
         try {
             PreferencesUtil.initPrefs(this)
@@ -94,7 +95,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
     override fun initSuccess() {
         toast("sdk init success")
-        (cameraImageSource.cameraControl as Cam2).sdkOk = true
+        //(cameraImageSource.cameraControl as Cam2).sdkOk = true
         if (FaceApi.getInstance().getGroupList(0, 1000).size <= 0) {
             toast("创建用户组$groupId")
             //创建分组0
@@ -123,7 +124,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
         es.schedule({ faceDetectManager!!.start() }, 1, TimeUnit.SECONDS)
         faceDetectManager!!.setUseDetect(true)
-
     }
 
     override fun initFail(errorCode: Int, msg: String?) {

@@ -1,6 +1,8 @@
 package net.vicp.biggee.zsp.feature
 
 
+//import androidx.appcompat.app.AppCompatActivity
+//import androidx.core.app.ActivityCompat
 import android.Manifest
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
@@ -11,7 +13,6 @@ import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.*
-import android.hardware.camera2.params.MeteringRectangle
 import android.media.ImageReader
 import android.os.Build
 import android.os.Handler
@@ -23,8 +24,6 @@ import android.util.SparseIntArray
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
-//import androidx.appcompat.app.AppCompatActivity
-//import androidx.core.app.ActivityCompat
 import com.baidu.aip.face.PreviewView
 import com.baidu.aip.face.camera.ICameraControl
 import com.baidu.aip.face.camera.PermissionCallback
@@ -136,7 +135,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         try {
             var width = this.width
             var height = this.height
-            if (displayOrientation % 180 == 0) {
+            if (displayOrientation % 180 == 90) {
                 width = this.height
                 height = this.width
             }
@@ -145,7 +144,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             textureView = previewView.textureView
             texture = textureView.surfaceTexture
 
-            imageReader = ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 5)
+            imageReader = ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2)
             imageReader.setOnImageAvailableListener(this, handler)
 
             texture.setDefaultBufferSize(width, height)
@@ -169,18 +168,26 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
                     CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY
             )
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO)
-            mPreviewRequestBuilder.set<Array<MeteringRectangle>>(CaptureRequest.CONTROL_AWB_REGIONS, null)
+//            mPreviewRequestBuilder.set<Array<MeteringRectangle>>(CaptureRequest.CONTROL_AWB_REGIONS, null)
             mPreviewRequestBuilder.set(CaptureRequest.FLASH_MODE, flashMode)
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_SCENE_MODE, CaptureRequest.CONTROL_SCENE_MODE_HDR)
             mPreviewRequestBuilder.set(
                     CaptureRequest.CONTROL_AF_MODE,
                     CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
             )
+//            mPreviewRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION,90)
 
             mPreviewRequestBuilder.addTarget(surface)
             //mPreviewRequestBuilder.addTarget(imageReader.surface)
 
             val captureRequest = mPreviewRequestBuilder.build()
+
+            logOutput(logtag, "width:" + width +
+                    " height:" + height +
+                    " displayOrientation:" + displayOrientation +
+                    " previewView.textureView.width:" + previewView.textureView.width +
+                    " previewView.textureView.height:" + previewView.textureView.height
+            )
 
             camera.createCaptureSession(
                     listOf(surface),
