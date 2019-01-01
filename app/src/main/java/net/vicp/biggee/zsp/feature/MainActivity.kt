@@ -89,9 +89,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         val screenWidth = dm.widthPixels
         val screenHeight = dm.heightPixels
         val rate: Float = screenWidth / screenHeight.toFloat()
-
-        previewView.rotation = -90f
-        previewView.scaleY = -rate * 0.9f
+        
+        textureView.scaleY = rate * 4 / 3f
 
         cameraImageSource.setCameraFacing(ICameraControl.CAMERA_FACING_FRONT)
         cameraImageSource.start()
