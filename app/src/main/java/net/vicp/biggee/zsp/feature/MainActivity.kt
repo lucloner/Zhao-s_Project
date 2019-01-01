@@ -54,8 +54,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         val textureView = previewView.textureView
         sample_text = findViewById<TextView>(R.id.sample_text)
         imageView = findViewById<ImageView>(R.id.zspimageView)
-        val width = 1024
-        val height = 768
+        val width = 1080
+        val height = 1920
 
         try {
             PreferencesUtil.initPrefs(this)
@@ -85,9 +85,13 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             cameraImageSource.cameraControl.setDisplayOrientation(CameraView.ORIENTATION_HORIZONTAL)
         }
 
+        val dm = resources.displayMetrics
+        val screenWidth = dm.widthPixels
+        val screenHeight = dm.heightPixels
+        val rate: Float = screenWidth / screenHeight.toFloat()
+
         previewView.rotation = -90f
-        textureView.minimumWidth = width
-        textureView.minimumHeight = height
+        previewView.scaleY = -rate * 0.9f
 
         cameraImageSource.setCameraFacing(ICameraControl.CAMERA_FACING_FRONT)
         cameraImageSource.start()
