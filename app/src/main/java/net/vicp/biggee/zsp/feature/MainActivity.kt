@@ -36,10 +36,10 @@ import java.util.concurrent.TimeUnit
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
         FaceSDKManager.SdkInitListener {
     // 用于检测人脸。
-    private var faceDetectManager: FaceDetectManager? = null
+    private val faceDetectManager: FaceDetectManager by lazy { FaceDetectManager(applicationContext) }
     private val handler: Handler = Handler()
     private val groupId: String = "ZsP"
-    private val cameraImageSource: Cam2ImgSrc = Cam2ImgSrc(this)
+    private val cameraImageSource: Cam2ImgSrc by lazy { Cam2ImgSrc(this) }
     @Volatile
     private var identityStatus = FEATURE_DATAS_UNREADY
     private val es = Executors.newSingleThreadScheduledExecutor()
@@ -102,7 +102,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
     override fun initSuccess() {
         toast("sdk init success")
-        //(cameraImageSource.cameraControl as Cam2).sdkOk = true
+
         if (FaceApi.getInstance().getGroupList(0, 1000).size <= 0) {
             toast("创建用户组$groupId")
             //创建分组0
@@ -112,10 +112,9 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             toast("添加" + if (ret) "成功" else "失败")
         }
 
-        faceDetectManager = FaceDetectManager(applicationContext)
         FaceSDKManager.getInstance().faceDetector.setMinFaceSize(200)
-        faceDetectManager!!.imageSource = cameraImageSource
-        faceDetectManager!!.faceFilter.setAngle(20)
+        faceDetectManager.imageSource = cameraImageSource
+        faceDetectManager.faceFilter.setAngle(20)
         FaceSDKManager.getInstance().faceDetector.setNumberOfThreads(4)
         es.execute {
             Thread.currentThread().priority = Thread.MAX_PRIORITY
@@ -126,11 +125,13 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             displaytxt("底库人脸个数：$count")
             identityStatus = IDENTITY_IDLE
         }
-        faceDetectManager!!.setOnFaceDetectListener(this@MainActivity)
-        faceDetectManager!!.setOnTrackListener(this@MainActivity)
+        faceDetectManager.setOnFaceDetectListener(this@MainActivity)
+        faceDetectManager.setOnTrackListener(this@MainActivity)
 
-        es.schedule({ faceDetectManager!!.start() }, 1, TimeUnit.SECONDS)
-        faceDetectManager!!.setUseDetect(true)
+        es.schedule({ faceDetectManager.start() }, 1, TimeUnit.SECONDS)
+        faceDetectManager.setUseDetect(true)
+
+        (cameraImageSource.cameraControl as Cam2).sdkOk = true
     }
 
     override fun initFail(errorCode: Int, msg: String?) {
@@ -227,13 +228,13 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
     override fun onDestroy() {
         super.onDestroy()
-        faceDetectManager?.imageSource?.stop()
-        faceDetectManager?.stop()
+        faceDetectManager.imageSource?.stop()
+        faceDetectManager.stop()
     }
 
     override fun onStop() {
         super.onStop()
-        faceDetectManager?.stop()
+        faceDetectManager.stop()
     }
 
     companion object {

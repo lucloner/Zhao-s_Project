@@ -24,6 +24,7 @@ import android.util.SparseIntArray
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
+import cn.mclover.util.ImageConvert
 import com.baidu.aip.face.PreviewView
 import com.baidu.aip.face.camera.ICameraControl
 import com.baidu.aip.face.camera.PermissionCallback
@@ -57,7 +58,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     private var exe: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private var timestamp = timenow
     private var check = false
-    private var imageReader: ImageReader = ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2)
+    private val imageReader: ImageReader by lazy { ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 3) }
     private lateinit var callback: PermissionCallback
     var sdkOk: Boolean = false
     private var backgroundThread: HandlerThread? = null
@@ -117,7 +118,45 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @see android.media.Image
      */
     override fun onImageAvailable(reader: ImageReader?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val image = reader?.acquireLatestImage()
+        if (image == null) {
+            return
+        }
+        val plane = image.planes
+        val mYUVBytes = arrayOfNulls<ByteArray>(plane.size)
+
+        for (i in mYUVBytes.indices) mYUVBytes[i] = ByteArray(plane[i].buffer.capacity())
+
+        val mRGBBytes = IntArray(width * height)
+
+        for (i in plane.indices) plane[i].buffer.get(mYUVBytes[i])
+        val yRowStride = plane[0].rowStride
+        val uvRowStride = plane[1].rowStride
+        val uvPixelStride = plane[1].pixelStride
+
+        ImageConvert.convertYUV420ToARGB8888(
+                mYUVBytes[0],
+                mYUVBytes[1],
+                mYUVBytes[2],
+                mRGBBytes,
+                image.width,
+                image.height,
+                yRowStride,
+                uvRowStride,
+                uvPixelStride,
+                false)
+
+        val mRGBframeBitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
+        mRGBframeBitmap.setPixels(mRGBBytes, 0, image.width, 0, 0, image.width, image.height)
+        image.close()
+
+        Thread {
+            Thread.currentThread().priority = Thread.MAX_PRIORITY
+            this.mRGBframeBitmap = mRGBframeBitmap
+            if (sdkOk && mRGBframeBitmap != null) {
+                listener.onPreviewFrame(mRGBframeBitmap, 0, mRGBframeBitmap.width, mRGBframeBitmap.height)
+            }
+        }.start()
     }
 
     /**
@@ -144,7 +183,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             textureView = previewView.textureView
             texture = textureView.surfaceTexture
 
-            imageReader = ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2)
             imageReader.setOnImageAvailableListener(this, handler)
 
             texture.setDefaultBufferSize(width, height)
@@ -178,7 +216,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 //            mPreviewRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION,90)
 
             mPreviewRequestBuilder.addTarget(surface)
-            //mPreviewRequestBuilder.addTarget(imageReader.surface)
+            mPreviewRequestBuilder.addTarget(imageReader.surface)
 
             val captureRequest = mPreviewRequestBuilder.build()
 
@@ -190,7 +228,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             )
 
             camera.createCaptureSession(
-                    listOf(surface),
+                    listOf(surface, imageReader.surface),
                     object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
                             try {
@@ -309,17 +347,17 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         texture = surface
         timenow = System.currentTimeMillis()
 
-        if (timenow - timestart > 66) {//33ms一帧，50ms就是1帧半
-            timestart = timenow
-            skippedFrame++
-            return
-        }
-        Handler().post {
-            mRGBframeBitmap = textureView.bitmap
-            if (sdkOk && mRGBframeBitmap != null) {
-                listener.onPreviewFrame(mRGBframeBitmap, 0, mRGBframeBitmap.width, mRGBframeBitmap.height)
-            }
-        }
+//        if (timenow - timestart > 66) {//33ms一帧，50ms就是1帧半
+//            timestart = timenow
+//            skippedFrame++
+//            return
+//        }
+//        Handler().post {
+//            mRGBframeBitmap = textureView.bitmap
+//            if (sdkOk && mRGBframeBitmap != null) {
+//                listener.onPreviewFrame(mRGBframeBitmap, 0, mRGBframeBitmap.width, mRGBframeBitmap.height)
+//            }
+//        }            imageReader = ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2)
     }
 
     /**
@@ -583,3 +621,4 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         }
     }
 }
+

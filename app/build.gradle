@@ -14,11 +14,6 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-        externalNativeBuild {
-            cmake {
-                cppFlags "-std=c++14 -frtti -fexceptions"
-            }
-        }
     }
 
     buildTypes {
@@ -50,8 +45,6 @@ dependencies {
     compile 'com.android.support:appcompat-v7:26+'
     compile 'com.android.support:recyclerview-v7:26+'
     compile project(path: ':library')
-    compile project(path: ':orbbec')
-    compile project(path: ':iminect')
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'com.tapadoo.android:alerter:3.0.2'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
@@ -59,6 +52,7 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
     implementation 'com.android.support:support-compat:26.1.0'
+    implementation project(':cpp')
 }
 repositories {
     mavenCentral()
