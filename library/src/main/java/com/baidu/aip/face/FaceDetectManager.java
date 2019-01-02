@@ -3,16 +3,16 @@
  */
 package com.baidu.aip.face;
 
-import java.util.ArrayList;
+import android.content.Context;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.util.Log;
 
 import com.baidu.aip.ImageFrame;
 import com.baidu.aip.manager.FaceSDKManager;
 import com.baidu.idl.facesdk.FaceInfo;
 
-import android.content.Context;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.util.Log;
+import java.util.ArrayList;
 
 /**
  * 封装了人脸检测的整体逻辑。
@@ -109,7 +109,7 @@ public class FaceDetectManager {
         processThread.setPriority(9);
         processThread.start();
         processHandler = new Handler(processThread.getLooper());
-        uiHandler = new Handler();
+        //uiHandler = new Handler();
         this.imageSource.start();
     }
 

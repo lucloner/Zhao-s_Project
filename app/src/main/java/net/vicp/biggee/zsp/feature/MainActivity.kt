@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
@@ -31,6 +32,7 @@ import com.baidu.idl.facesdk.FaceTracker
 import com.tapadoo.alerter.Alerter
 import net.vicp.biggee.zsp.R
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
@@ -42,7 +44,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private val cameraImageSource: Cam2ImgSrc by lazy { Cam2ImgSrc(this) }
     @Volatile
     private var identityStatus = FEATURE_DATAS_UNREADY
-    private val es = Executors.newSingleThreadScheduledExecutor()
+    private val es: ScheduledExecutorService by lazy { Executors.newSingleThreadScheduledExecutor() }
     private var timeStamp: Long = System.currentTimeMillis()
     private lateinit var imageView: ImageView
     private lateinit var sample_text: TextView
@@ -89,11 +91,11 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         val screenWidth = dm.widthPixels
         val screenHeight = dm.heightPixels
         val rate: Float = screenWidth / screenHeight.toFloat()
-        
+
         textureView.scaleY = rate * 4 / 3f
 
         cameraImageSource.setCameraFacing(ICameraControl.CAMERA_FACING_FRONT)
-        cameraImageSource.start()
+        //cameraImageSource.start()
     }
 
     override fun initStart() {
@@ -116,22 +118,21 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         faceDetectManager.imageSource = cameraImageSource
         faceDetectManager.faceFilter.setAngle(20)
         FaceSDKManager.getInstance().faceDetector.setNumberOfThreads(4)
-        es.execute {
+        es.schedule({
             Thread.currentThread().priority = Thread.MAX_PRIORITY
             // android.os.Process.setThreadPriority (-4);
             FaceApi.getInstance().loadFacesFromDB(groupId)
             toast("人脸数据加载完成，即将开始1：N")
-            val count = FaceApi.getInstance().group2Facesets[groupId]?.size
+            val count = FaceApi.getInstance().group2Facesets[groupId]!!.size
             displaytxt("底库人脸个数：$count")
             identityStatus = IDENTITY_IDLE
-        }
+            (cameraImageSource.cameraControl as Cam2).sdkOk = true
+            faceDetectManager.start()
+            Log.v(logtag + "iS", (cameraImageSource.cameraControl as Cam2).sdkOk.toString())
+        }, 1, TimeUnit.SECONDS)
         faceDetectManager.setOnFaceDetectListener(this@MainActivity)
         faceDetectManager.setOnTrackListener(this@MainActivity)
-
-        es.schedule({ faceDetectManager.start() }, 1, TimeUnit.SECONDS)
         faceDetectManager.setUseDetect(true)
-
-        (cameraImageSource.cameraControl as Cam2).sdkOk = true
     }
 
     override fun initFail(errorCode: Int, msg: String?) {
@@ -143,13 +144,20 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         cameraImageSource.stop()
     }
 
-    override fun onDetectFace(status: Int, infos: Array<out FaceInfo>, imageFrame: ImageFrame) {
+    override fun onDetectFace(status: Int, infos: Array<out FaceInfo>?, imageFrame: ImageFrame?) {
+        if (imageFrame == null || infos == null) {
+            Log.v(logtag + "oD", identityStatus.toString())
+            return
+        }
         val bitmap = Bitmap.createBitmap(
                 imageFrame.argb, imageFrame.width, imageFrame.height, Bitmap.Config
                 .ARGB_8888
         )
 
-        handler.post { imageView.setImageBitmap(bitmap) }
+        handler.post {
+            imageView.setImageBitmap(bitmap)
+            Log.v(logtag + "oDF", bitmap.byteCount.toString())
+        }
 
         timeStamp = System.currentTimeMillis()
 
@@ -241,5 +249,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         private const val FEATURE_DATAS_UNREADY = 1
         private const val IDENTITY_IDLE = 2
         private const val IDENTITYING = 3
+        private const val logtag = "Z's P-MA-"
     }
 }

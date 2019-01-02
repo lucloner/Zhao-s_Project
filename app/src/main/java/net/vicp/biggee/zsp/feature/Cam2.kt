@@ -148,15 +148,16 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
         val mRGBframeBitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
         mRGBframeBitmap.setPixels(mRGBBytes, 0, image.width, 0, 0, image.width, image.height)
-        image.close()
-
         Thread {
             Thread.currentThread().priority = Thread.MAX_PRIORITY
             this.mRGBframeBitmap = mRGBframeBitmap
-            if (sdkOk && mRGBframeBitmap != null) {
+
+            if (sdkOk) {
+//                logOutput("11", sdkOk.toString())
                 listener.onPreviewFrame(mRGBframeBitmap, 0, mRGBframeBitmap.width, mRGBframeBitmap.height)
             }
         }.start()
+        image.close()
     }
 
     /**
@@ -571,7 +572,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
                     }
                 }
             } else {
-                Cam2.logOutput("s", "camChkOK!:$skippedFrame")
+                //Cam2.logOutput("s", "camChkOK!:$skippedFrame")
                 stoped = false
             }
             skippedFrame = 0
