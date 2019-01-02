@@ -78,10 +78,11 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             ORIENTATIONS.append(Surface.ROTATION_270, 180)
         }
 
-        private fun logOutput(who: String, what: String) {
+        fun logOutput(who: String, what: String) {
             Log.v(logtag + who, what)
         }
     }
+
 
     /**
      * Starts a background thread and its [Handler].

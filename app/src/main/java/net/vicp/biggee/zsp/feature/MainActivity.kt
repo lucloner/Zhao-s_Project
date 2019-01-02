@@ -9,7 +9,6 @@ import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AppCompatActivity
-import android.util.Log
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
@@ -119,6 +118,9 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         faceDetectManager.faceFilter.setAngle(20)
         FaceSDKManager.getInstance().faceDetector.setNumberOfThreads(4)
         es.schedule({
+            if (identityStatus != FEATURE_DATAS_UNREADY) {
+                return@schedule
+            }
             Thread.currentThread().priority = Thread.MAX_PRIORITY
             // android.os.Process.setThreadPriority (-4);
             FaceApi.getInstance().loadFacesFromDB(groupId)
@@ -128,7 +130,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             identityStatus = IDENTITY_IDLE
             (cameraImageSource.cameraControl as Cam2).sdkOk = true
             faceDetectManager.start()
-            Log.v(logtag + "iS", (cameraImageSource.cameraControl as Cam2).sdkOk.toString())
+            Cam2.logOutput("iS", "starting done")
         }, 1, TimeUnit.SECONDS)
         faceDetectManager.setOnFaceDetectListener(this@MainActivity)
         faceDetectManager.setOnTrackListener(this@MainActivity)
@@ -145,8 +147,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     }
 
     override fun onDetectFace(status: Int, infos: Array<out FaceInfo>?, imageFrame: ImageFrame?) {
-        if (imageFrame == null || infos == null) {
-            Log.v(logtag + "oD", identityStatus.toString())
+        if (imageFrame == null) {
+            Cam2.logOutput("oD", "null:" + imageFrame.toString())
             return
         }
         val bitmap = Bitmap.createBitmap(
@@ -156,7 +158,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
         handler.post {
             imageView.setImageBitmap(bitmap)
-            Log.v(logtag + "oDF", bitmap.byteCount.toString())
+            Cam2.logOutput("oDF", bitmap.byteCount.toString())
         }
 
         timeStamp = System.currentTimeMillis()
@@ -167,6 +169,10 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             }
 
             es.submit {
+                if (infos == null) {
+                    Cam2.logOutput("oD-es", "null:" + infos.toString())
+                    return@submit
+                }
                 if (infos.isEmpty()) {
                     return@submit
                 }
@@ -216,7 +222,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * @param trackedModel 人脸信息
      */
     override fun onTrack(trackedModel: FaceFilter.TrackedModel?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        //TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
 
