@@ -158,7 +158,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
         handler.post {
             imageView.setImageBitmap(bitmap)
-            Cam2.logOutput("oDF", bitmap.byteCount.toString())
+//            Cam2.logOutput("oDF", bitmap.byteCount.toString())
         }
 
         timeStamp = System.currentTimeMillis()

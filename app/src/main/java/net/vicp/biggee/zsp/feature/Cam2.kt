@@ -58,7 +58,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     private var exe: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private var timestamp = timenow
     private var check = false
-    private val imageReader: ImageReader by lazy { ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 3) }
+    private val imageReader: ImageReader by lazy { ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2) }
     private lateinit var callback: PermissionCallback
     var sdkOk: Boolean = false
     private var backgroundThread: HandlerThread? = null
@@ -123,7 +123,8 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         if (image == null) {
             return
         }
-        val plane = image.planes
+        Thread {
+            val plane = image.planes
         val mYUVBytes = arrayOfNulls<ByteArray>(plane.size)
 
         for (i in mYUVBytes.indices) mYUVBytes[i] = ByteArray(plane[i].buffer.capacity())
@@ -149,7 +150,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
         val mRGBframeBitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
         mRGBframeBitmap.setPixels(mRGBBytes, 0, image.width, 0, 0, image.width, image.height)
-        Thread {
+
             Thread.currentThread().priority = Thread.MAX_PRIORITY
             this.mRGBframeBitmap = mRGBframeBitmap
 
