@@ -167,10 +167,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         try {
             image = reader?.acquireLatestImage()
 
-            val image = this.image
-            if (image == null) {
-                return
-            }
+            val image = this.image ?: return
             val plane = image.planes
             val mYUVBytes = arrayOfNulls<ByteArray>(plane.size)
 
@@ -401,18 +398,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
         texture = surface
         timenow = System.currentTimeMillis()
-
-//        if (timenow - timestart > 66) {//33ms一帧，50ms就是1帧半
-//            timestart = timenow
-//            skippedFrame++
-//            return
-//        }
-//        Handler().post {
-//            mRGBframeBitmap = textureView.bitmap
-//            if (sdkOk && mRGBframeBitmap != null) {
-//                listener.onPreviewFrame(mRGBframeBitmap, 0, mRGBframeBitmap.width, mRGBframeBitmap.height)
-//            }
-//        }            imageReader = ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2)
     }
 
     /**
