@@ -65,6 +65,7 @@ void ConvertYUV420ToARGB8888(const uint8 *const yData, const uint8 *const uData,
                              const int width, const int height,
                              const int y_row_stride, const int uv_row_stride,
                              const int uv_pixel_stride) {
+
     uint32 *out = output;
 
     for (int y = 0; y < height; y++) {

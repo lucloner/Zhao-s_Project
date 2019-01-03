@@ -55,8 +55,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         val textureView = previewView.textureView
         sample_text = findViewById<TextView>(R.id.sample_text)
         imageView = findViewById<ImageView>(R.id.zspimageView)
-        val width = 1080
-        val height = 1920
+
 
         try {
             PreferencesUtil.initPrefs(this)
@@ -70,12 +69,23 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         }
 
         toast("程序已经打开")
+        orientation = resources.configuration.orientation
+        val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
+
+        var width = 1080
+        var height = 1920
+
+        if (!isPortrait) {
+            height = 1080
+            width = 1920
+        }
 
         cameraImageSource.setPreviewView(previewView)
         cameraImageSource.cameraControl.setPreferredPreviewSize(width, height)
         textureView.isOpaque = false
         textureView.keepScreenOn = false
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+
         if (isPortrait) {
             previewView.scaleType = PreviewView.ScaleType.FIT_WIDTH
             // 相机坚屏模式
@@ -234,6 +244,13 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 .show()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if ((cameraImageSource.cameraControl as Cam2).sdkOk) {
+            faceDetectManager.start()
+        }
+    }
+
     private fun displaytxt(s: String) {
         handler.post {
             sample_text.text = s
@@ -256,5 +273,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         private const val IDENTITY_IDLE = 2
         private const val IDENTITYING = 3
         private const val logtag = "Z's P-MA-"
+        var orientation: Int = 0
     }
 }

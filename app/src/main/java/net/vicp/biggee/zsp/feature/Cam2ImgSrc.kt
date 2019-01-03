@@ -28,7 +28,7 @@ class Cam2ImgSrc(context: Context) : ImageSource(), ICameraControl.OnFrameListen
     }
 
     override fun onPreviewFrame(data: Bitmap, rotation: Int, width: Int, height: Int) {
-//        Log.v(logtag,data.byteCount.toString())
+        //Cam2.logOutput(logtag+"oPF",data.byteCount.toString())
         var w = width
         var h = height
 

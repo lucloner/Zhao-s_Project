@@ -8,11 +8,9 @@ import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.ImageFormat
-import android.graphics.Rect
-import android.graphics.SurfaceTexture
+import android.graphics.*
 import android.hardware.camera2.*
+import android.media.Image
 import android.media.ImageReader
 import android.os.Build
 import android.os.Handler
@@ -30,11 +28,12 @@ import com.baidu.aip.face.camera.ICameraControl
 import com.baidu.aip.face.camera.PermissionCallback
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ThreadFactory
 import java.util.concurrent.TimeUnit
 
-@TargetApi(Build.VERSION_CODES.LOLLIPOP)
+@TargetApi(Build.VERSION_CODES.N)
 class Cam2 internal constructor(private var context: Context) : ICameraControl<Bitmap>, CameraDevice.StateCallback(),
-        TextureView.SurfaceTextureListener, ICameraControl.OnTakePictureCallback, ImageReader.OnImageAvailableListener {
+        TextureView.SurfaceTextureListener, ICameraControl.OnTakePictureCallback, ImageReader.OnImageAvailableListener, ThreadFactory {
     private var cameraFacing: Int = ICameraControl.CAMERA_FACING_FRONT
     private var width = 720
     private var height = 1280
@@ -52,10 +51,10 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     private var timestart = timenow
     private var camera: CameraDevice? = null
     private val flashMode = CameraMetadata.FLASH_MODE_OFF
-    private var skippedFrame = 0
+    @Volatile
     private lateinit var mRGBframeBitmap: Bitmap
     private lateinit var listener: ICameraControl.OnFrameListener<Any>
-    private var exe: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    private var exe: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(this)
     private var timestamp = timenow
     private var check = false
     private val imageReader: ImageReader by lazy { ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2) }
@@ -63,6 +62,9 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     var sdkOk: Boolean = false
     private var backgroundThread: HandlerThread? = null
     private var handler: Handler? = null
+    @Volatile
+    private var image: Image? = null
+    private var cnt = 0
 
     companion object {
         private const val hardwareDelay = 1000
@@ -83,6 +85,49 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         }
     }
 
+    /**
+     * 选择变换
+     *
+     * @param origin 原图
+     * @param alpha  旋转角度，可正可负
+     * @return 旋转后的图片
+     */
+    private fun rotateBitmap(origin: Bitmap, alpha: Float): Bitmap {
+        val width = origin.width
+        val height = origin.height
+        val matrix = Matrix()
+        matrix.setRotate(alpha)
+        // 围绕原地进行旋转
+        val newBM = Bitmap.createBitmap(origin, 0, 0, width, height, matrix, false)
+        if (newBM == origin) {
+            return newBM
+        }
+        origin.recycle()
+        return newBM
+    }
+
+    /**
+     * Constructs a new `Thread`.  Implementations may also initialize
+     * priority, name, daemon status, `ThreadGroup`, etc.
+     *
+     * @param r a runnable to be executed by new thread instance
+     * @return constructed thread, or `null` if the request to
+     * create a thread is rejected
+     */
+    override fun newThread(r: Runnable?): Thread {
+        if (cnt > 8) {
+            return Thread {}
+        }
+        return Thread {
+            cnt++
+            try {
+                r?.run()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            cnt--
+        }
+    }
 
     /**
      * Starts a background thread and its [Handler].
@@ -119,47 +164,54 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @see android.media.Image
      */
     override fun onImageAvailable(reader: ImageReader?) {
-        val image = reader?.acquireLatestImage()
-        if (image == null) {
-            return
-        }
-        Thread {
-            val plane = image.planes
-        val mYUVBytes = arrayOfNulls<ByteArray>(plane.size)
+        try {
+            image = reader?.acquireLatestImage()
 
-        for (i in mYUVBytes.indices) mYUVBytes[i] = ByteArray(plane[i].buffer.capacity())
-
-        val mRGBBytes = IntArray(width * height)
-
-        for (i in plane.indices) plane[i].buffer.get(mYUVBytes[i])
-        val yRowStride = plane[0].rowStride
-        val uvRowStride = plane[1].rowStride
-        val uvPixelStride = plane[1].pixelStride
-
-        ImageConvert.convertYUV420ToARGB8888(
-                mYUVBytes[0],
-                mYUVBytes[1],
-                mYUVBytes[2],
-                mRGBBytes,
-                image.width,
-                image.height,
-                yRowStride,
-                uvRowStride,
-                uvPixelStride,
-                false)
-
-        val mRGBframeBitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-        mRGBframeBitmap.setPixels(mRGBBytes, 0, image.width, 0, 0, image.width, image.height)
-
-            Thread.currentThread().priority = Thread.MAX_PRIORITY
-            this.mRGBframeBitmap = mRGBframeBitmap
-
-            if (sdkOk) {
-//                logOutput("11", sdkOk.toString())
-                listener.onPreviewFrame(mRGBframeBitmap, 0, mRGBframeBitmap.width, mRGBframeBitmap.height)
+            val image = this.image
+            if (image == null) {
+                return
             }
-        }.start()
-        image.close()
+            val plane = image.planes
+            val mYUVBytes = arrayOfNulls<ByteArray>(plane.size)
+
+            for (i in mYUVBytes.indices) mYUVBytes[i] = ByteArray(plane[i].buffer.capacity())
+
+            val mRGBBytes = IntArray(width * height)
+
+            for (i in plane.indices) plane[i].buffer.get(mYUVBytes[i])
+            val yRowStride = plane[0].rowStride
+            val uvRowStride = plane[1].rowStride
+            val uvPixelStride = plane[1].pixelStride
+
+            ImageConvert.convertYUV420ToARGB8888(
+                    mYUVBytes[0],
+                    mYUVBytes[1],
+                    mYUVBytes[2],
+                    mRGBBytes,
+                    image.width,
+                    image.height,
+                    yRowStride,
+                    uvRowStride,
+                    uvPixelStride,
+                    false)
+
+            val mRGBframeBitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
+            mRGBframeBitmap.setPixels(mRGBBytes, 0, image.width, 0, 0, image.width, image.height)
+
+            this.mRGBframeBitmap = rotateBitmap(mRGBframeBitmap, 270f)
+
+            image.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        if (sdkOk && !stoped) {
+            val bmp = this.mRGBframeBitmap
+            exe.execute {
+                Thread.currentThread().priority = Thread.MAX_PRIORITY
+                listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
+            }
+        }
     }
 
     /**
@@ -396,7 +448,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     /**
      * 打开相机。
      */
-    @TargetApi(Build.VERSION_CODES.M)
     override fun start() {
         if (!stoped) {
             pause()
@@ -456,7 +507,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             e.printStackTrace()
         }
         exe.shutdown()
-        exe = Executors.newSingleThreadScheduledExecutor()
+        exe = Executors.newSingleThreadScheduledExecutor(this)
         exe.scheduleAtFixedRate(
                 this::checkAlive,
                 hardwareDelay * 2.toLong(),
@@ -565,7 +616,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             val output: Boolean = timestamp != timenow || timestamp != timestart
 
             if (!output) {
-                Cam2.logOutput("s", "camDie!:$skippedFrame")
+                Cam2.logOutput("s", "camDie!")
                 stoped = true
                 handler?.postAtFrontOfQueue {
                     Handler().post {
@@ -574,10 +625,9 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
                     }
                 }
             } else {
-                //Cam2.logOutput("s", "camChkOK!:$skippedFrame")
+                Cam2.logOutput("s", "camChkOK!")
                 stoped = false
             }
-            skippedFrame = 0
         } catch (e: Exception) {
             e.printStackTrace()
         }
