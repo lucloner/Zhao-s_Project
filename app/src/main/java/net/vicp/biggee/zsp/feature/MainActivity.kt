@@ -44,9 +44,11 @@ import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import kotlin.collections.HashSet
 
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
         FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener {
+
     // 用于检测人脸。
     private val faceDetectManager: FaceDetectManager by lazy { FaceDetectManager(applicationContext) }
     private val handler: Handler = Handler()
@@ -65,6 +67,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private var faceTOreg: Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
     private var wait = false
     private var txtName: EditText? = null
+    private var showFace = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,14 +133,14 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * method
      */
     override fun onDismiss(dialog: DialogInterface?) {
-        if (!wait) {
-            (cameraImageSource.cameraControl as Cam2).sdkOk = true
-        }
+        Cam2.logOutput("$logtag oD", "Dismissed!:$wait\t${(cameraImageSource.cameraControl as Cam2).sdkOk}")
+        (cameraImageSource.cameraControl as Cam2).sdkOk = wait
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
         Cam2.logOutput("$logtag oC", "dispatchTouchEvent!${ev?.action}")
         if (ev?.action == MotionEvent.ACTION_UP) {
+            wait = (cameraImageSource.cameraControl as Cam2).sdkOk
             (cameraImageSource.cameraControl as Cam2).sdkOk = false
             var hasFace = false
             try {
@@ -182,10 +185,11 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      */
     override fun onClick(dialog: DialogInterface?, which: Int) {
         Cam2.logOutput("$logtag oC", "Dialog Clicked!")
-        wait = true
-        (cameraImageSource.cameraControl as Cam2).sdkOk = false
         when (which) {
             DialogInterface.BUTTON_POSITIVE -> {  //注册
+                handler.post {
+                    imageView.setImageBitmap(faceTOreg)
+                }
                 val argbImg = FeatureUtils.getImageInfo(faceTOreg)
                 val bytes = ByteArray(2048)
                 val ret = FaceSDKManager.getInstance().faceFeature.faceFeature(argbImg, bytes, 50)
@@ -234,11 +238,44 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 }
             }
             DialogInterface.BUTTON_NEUTRAL -> {   //删除
-
+                dialog?.dismiss()
+                val choices = HashSet<String>()
+                val users = DBManager.getInstance().queryUserByGroupId(groupId)
+                val usernames = Array<String>(users.size, { users[it].userInfo })
+                handler.postDelayed({
+                    AlertDialog.Builder(this@MainActivity).apply {
+                        setTitle("请选择要删除的用户名称")
+                        setMultiChoiceItems(usernames, BooleanArray(users.size, { false })) { _: DialogInterface, which: Int, isChecked: Boolean ->
+                            val uid = users[which].userId
+                            val featureList = DBManager.getInstance().queryFeature(groupId, uid)
+                            try {
+                                val bmp = getRegedFace(featureList[0]!!.imageName)
+                                if (bmp != null) {
+                                    handler.post { imageView.setImageBitmap(bmp) }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                            if (isChecked) {
+                                choices.add(uid)
+                            } else {
+                                choices.remove(uid)
+                            }
+                        }
+                        setPositiveButton("删除选中") { _: DialogInterface, _: Int ->
+                            choices.forEach {
+                                DBManager.getInstance().deleteUser(it, groupId)
+                            }
+                        }
+                        setNegativeButton("取消", this@MainActivity)
+                        setOnDismissListener(this@MainActivity)
+                        wait = (cameraImageSource.cameraControl as Cam2).sdkOk
+                        (cameraImageSource.cameraControl as Cam2).sdkOk = false
+                        show()
+                    }
+                }, 10)
             }
         }
-        (cameraImageSource.cameraControl as Cam2).sdkOk = true
-        wait = false
     }
 
     override fun initStart() {
@@ -295,14 +332,17 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             Cam2.logOutput("oD", "null:" + imageFrame.toString())
             return
         }
-        val bitmap = Bitmap.createBitmap(
-                imageFrame.argb, imageFrame.width, imageFrame.height, Bitmap.Config
-                .ARGB_8888
-        )
 
-        handler.post {
-            imageView.setImageBitmap(bitmap)
+        if (!showFace) {
+            val bitmap = Bitmap.createBitmap(
+                    imageFrame.argb, imageFrame.width, imageFrame.height, Bitmap.Config
+                    .ARGB_8888
+            )
+
+            handler.post {
+                imageView.setImageBitmap(bitmap)
 //            Cam2.logOutput("oDF", bitmap.byteCount.toString())
+            }
         }
 
         timeStamp = System.currentTimeMillis()
@@ -319,7 +359,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 return@submit
             }
 
-            val starttime = System.currentTimeMillis()
             val rgbScore = FaceLiveness.getInstance().rgbLiveness(
                     imageFrame.argb, imageFrame
                     .width, imageFrame.height, infos[0].landmarks
@@ -375,22 +414,24 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 val user = FaceApi.getInstance().getUserInfo(groupId, userId) ?: return@post
 
                 txt.append("\n" + user.userInfo)
-                val featureList = user.featureList
-                if (featureList != null && featureList.size > 0) {
-                    val faceDir = FileUitls.getFaceDirectory()
-                    if (faceDir != null && faceDir.exists()) {
-                        val file = File(faceDir, featureList[0].imageName)
-                        if (file.exists()) {
-                            val face = BitmapFactory.decodeFile(file.absolutePath)
-                            showFace(face, user.userInfo)
-                        }
-                    }
+                try {
+                    showFace(getRegedFace(user.featureList[0]!!.imageName)!!, user.userInfo)
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
                 txt.append("\n特征抽取对比耗时:" + (System.currentTimeMillis() - timeStamp))
                 displaytxt(txt.toString())
             }
             identityStatus = IDENTITY_IDLE
         }
+    }
+
+    private fun getRegedFace(imageName: String): Bitmap? {
+        val f = File(FileUitls.getFaceDirectory(), imageName)
+        if (f.exists()) {
+            return BitmapFactory.decodeFile(f.absolutePath)
+        }
+        return null
     }
 
     /**
@@ -406,11 +447,16 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         Alerter.create(this)
                 .setTitle("识别！")
                 .setText(name)
-                .setIcon(face)
+                .hideIcon()
                 .setBackgroundColorInt(Color.LTGRAY)
                 .show()
+        showFace = true
+        handler.post {
+            imageView.setImageBitmap(face)
+        }
+        handler.postDelayed({ showFace = false }, 3000)
     }
-    
+
     private fun toast(s: String) {
         Alerter.create(this)
                 .setTitle(title.toString())

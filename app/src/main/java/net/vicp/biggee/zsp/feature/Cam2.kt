@@ -41,7 +41,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     var lensFocalLength = 0f
     private lateinit var textureView: TextureView
     private lateinit var texture: SurfaceTexture
-    private val surface: Surface by lazy { Surface(texture) }
+    private lateinit var surface: Surface
     private var displayOrientation: Int = 0
     private var session: CameraCaptureSession? = null
     private var data: ByteArray? = null
@@ -240,7 +240,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             imageReader.setOnImageAvailableListener(this, handler)
 
             texture.setDefaultBufferSize(width, height)
-
+            surface = Surface(texture)
             val mPreviewRequestBuilder: CaptureRequest.Builder =
                     camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
             mPreviewRequestBuilder.set(
@@ -397,6 +397,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @param surface The surface just updated
      */
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
+        texture = surface
         timenow = System.currentTimeMillis()
     }
 
