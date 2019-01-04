@@ -41,12 +41,13 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     var lensFocalLength = 0f
     private lateinit var textureView: TextureView
     private lateinit var texture: SurfaceTexture
-    private lateinit var surface: Surface
+    private val surface: Surface by lazy { Surface(texture) }
     private var displayOrientation: Int = 0
     private var session: CameraCaptureSession? = null
     private var data: ByteArray? = null
     private var stoped = true
     private var previewFrame: Rect? = null
+    @Volatile
     private var timenow = System.currentTimeMillis()
     private var timestart = timenow
     private var camera: CameraDevice? = null
@@ -55,6 +56,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     private lateinit var mRGBframeBitmap: Bitmap
     private lateinit var listener: ICameraControl.OnFrameListener<Any>
     private var exe: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(this)
+    @Volatile
     private var timestamp = timenow
     private var check = false
     private val imageReader: ImageReader by lazy { ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2) }
@@ -114,9 +116,9 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @return constructed thread, or `null` if the request to
      * create a thread is rejected
      */
-    override fun newThread(r: Runnable?): Thread {
+    override fun newThread(r: Runnable?): Thread? {
         if (cnt > 8) {
-            return Thread {}
+            return null
         }
         return Thread {
             cnt++
@@ -238,7 +240,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             imageReader.setOnImageAvailableListener(this, handler)
 
             texture.setDefaultBufferSize(width, height)
-            surface = Surface(texture)
 
             val mPreviewRequestBuilder: CaptureRequest.Builder =
                     camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
@@ -396,7 +397,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @param surface The surface just updated
      */
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
-        texture = surface
         timenow = System.currentTimeMillis()
     }
 
@@ -592,30 +592,27 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     }
 
     private fun checkAlive() {
-        try {
-            check = !check
-            if (check) {
-                timestamp = timenow
-                return
-            }
-            val output: Boolean = timestamp != timenow || timestamp != timestart
-
-            if (!output) {
-                Cam2.logOutput("s", "camDie!")
-                stoped = true
-                handler?.postAtFrontOfQueue {
-                    Handler().post {
-                        pause()
-                        start()
-                    }
-                }
-            } else {
-                Cam2.logOutput("s", "camChkOK!")
-                stoped = false
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        check = !check
+        if (check) {
+            timestamp = timenow
+            return
         }
+        val output: Boolean = timestamp != timenow || timestamp != timestart
+
+        if (!output) {
+            Cam2.logOutput("s", "camDie!")
+            stoped = true
+            handler?.postAtFrontOfQueue {
+                Handler().post {
+                    pause()
+                    start()
+                }
+            }
+        } else {
+            Cam2.logOutput("s", "camChkOK!")
+            stoped = false
+        }
+        System.gc()
     }
 
     private inner class CamDebuger : CameraCaptureSession.CaptureCallback() {

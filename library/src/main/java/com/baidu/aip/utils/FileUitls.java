@@ -3,6 +3,11 @@
  */
 package com.baidu.aip.utils;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.os.Environment;
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -13,11 +18,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Iterator;
-
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.os.Environment;
-import android.util.Log;
 
 public class FileUitls {
 
@@ -47,7 +47,7 @@ public class FileUitls {
         File sdRootFile = getSDRootFile();
         File file = null;
         if (sdRootFile != null && sdRootFile.exists()) {
-            file = new File(sdRootFile, "faces");
+            file = new File(sdRootFile, "syjfaces");
             if (!file.exists()) {
                 boolean success = file.mkdirs();
             }
@@ -97,11 +97,7 @@ public class FileUitls {
 //        }
 
         String[] content = d(context, licenseName);
-        if (content == null || content.length == 0) {
-            return false;
-        } else  {
-            return true;
-        }
+        return content != null && content.length != 0;
     }
 
     public static String[] d(Context var1, String licenseName) {
