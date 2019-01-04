@@ -74,7 +74,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         sample_text = findViewById<TextView>(R.id.sample_text)
         imageView = findViewById<ImageView>(R.id.zspimageView)
 
-
         try {
             PreferencesUtil.initPrefs(this)
             // 使用人脸1：n时使用
@@ -218,11 +217,14 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                             }
                             toast("注册失败")
                         } else {
-                            showFace(faceTOreg, "注册成功将重启")
-                            Thread.sleep(3000)
-                            val i = baseContext.packageManager.getLaunchIntentForPackage(baseContext.packageName)
-                            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                            startActivity(i)
+                            es.execute {
+                                showFace(faceTOreg, "注册成功将重启")
+                                Thread.sleep(3000)
+                                val i = baseContext.packageManager.getLaunchIntentForPackage(baseContext.packageName)
+                                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                startActivity(i)
+                            }
+                            return
                         }
                     }
                 } else if (ret == -1) {
@@ -323,8 +325,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                     .width, imageFrame.height, infos[0].landmarks
             )
 
-            val duration = System.currentTimeMillis() - starttime
-
             if (rgbScore <= FaceEnvironment.LIVENESS_RGB_THRESHOLD) {
                 return@submit
             }
@@ -382,7 +382,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                         val file = File(faceDir, featureList[0].imageName)
                         if (file.exists()) {
                             val face = BitmapFactory.decodeFile(file.absolutePath)
-                            showFace(face, userId)
+                            showFace(face, user.userInfo)
                         }
                     }
                 }
