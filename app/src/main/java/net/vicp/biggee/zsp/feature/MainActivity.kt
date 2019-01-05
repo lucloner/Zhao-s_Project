@@ -6,7 +6,6 @@ package net.vicp.biggee.zsp.feature
 //import kotlinx.android.synthetic.main.activity_main.*
 import android.app.AlertDialog
 import android.content.DialogInterface
-import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -60,7 +59,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private val es: ScheduledExecutorService by lazy { Executors.newSingleThreadScheduledExecutor() }
     private var timeStamp: Long = System.currentTimeMillis()
     private lateinit var imageView: ImageView
-    private lateinit var sample_text: TextView
+    private lateinit var sampletext: TextView
     private var userIdOfMaxScore = ""
     private var maxScore = 0f
     private var unknownFace: Bitmap? = null
@@ -74,8 +73,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         setContentView(R.layout.zsp_activity_main)
 
         val textureView = previewView.textureView
-        sample_text = findViewById<TextView>(R.id.sample_text)
-        imageView = findViewById<ImageView>(R.id.zspimageView)
+        sampletext = findViewById(R.id.sample_text)
+        imageView = findViewById(R.id.zspimageView)
 
         try {
             PreferencesUtil.initPrefs(this)
@@ -139,6 +138,9 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
         Cam2.logOutput("$logtag oC", "dispatchTouchEvent!${ev?.action}")
+        if (!(cameraImageSource.cameraControl as Cam2).sdkOk) {
+            return true
+        }
         if (ev?.action == MotionEvent.ACTION_UP) {
             wait = (cameraImageSource.cameraControl as Cam2).sdkOk
             (cameraImageSource.cameraControl as Cam2).sdkOk = false
@@ -152,7 +154,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
             AlertDialog.Builder(this@MainActivity).apply {
                 setTitle("操作?")
-                setMessage("请选择")
+                setMessage("请输入名称：")
                 if (hasFace) {
                     val faceView = ImageView(this@MainActivity).apply {
                         setImageBitmap(faceTOreg)
@@ -166,7 +168,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                     setView(layout)
                     setPositiveButton("注册", this@MainActivity)
                 }
-                setNeutralButton("删除", this@MainActivity)
+                setNeutralButton("删除已注册", this@MainActivity)
                 setNegativeButton("关闭", this@MainActivity)
                 setOnDismissListener(this@MainActivity)
                 show()
@@ -185,6 +187,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      */
     override fun onClick(dialog: DialogInterface?, which: Int) {
         Cam2.logOutput("$logtag oC", "Dialog Clicked!")
+        displaytxt("")
         when (which) {
             DialogInterface.BUTTON_POSITIVE -> {  //注册
                 handler.post {
@@ -221,14 +224,10 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                             }
                             toast("注册失败")
                         } else {
-                            es.execute {
-                                showFace(faceTOreg, "注册成功将重启")
-                                Thread.sleep(3000)
-                                val i = baseContext.packageManager.getLaunchIntentForPackage(baseContext.packageName)
-                                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                startActivity(i)
-                            }
-                            return
+                            FaceApi.getInstance().loadFacesFromDB(groupId)
+                            toast("更新: 人脸数据加载完成，即将开始1：N")
+                            val count = FaceApi.getInstance().group2Facesets[groupId]!!.size
+                            displaytxt("更新: 底库人脸个数：$count")
                         }
                     }
                 } else if (ret == -1) {
@@ -241,11 +240,11 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 dialog?.dismiss()
                 val choices = HashSet<String>()
                 val users = DBManager.getInstance().queryUserByGroupId(groupId)
-                val usernames = Array<String>(users.size, { users[it].userInfo })
+                val usernames = Array<String>(users.size) { users[it].userInfo }
                 handler.postDelayed({
                     AlertDialog.Builder(this@MainActivity).apply {
                         setTitle("请选择要删除的用户名称")
-                        setMultiChoiceItems(usernames, BooleanArray(users.size, { false })) { _: DialogInterface, which: Int, isChecked: Boolean ->
+                        setMultiChoiceItems(usernames, BooleanArray(users.size) { false }) { _: DialogInterface, which: Int, isChecked: Boolean ->
                             val uid = users[which].userId
                             val featureList = DBManager.getInstance().queryFeature(groupId, uid)
                             try {
@@ -311,7 +310,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             identityStatus = IDENTITY_IDLE
             (cameraImageSource.cameraControl as Cam2).sdkOk = true
             faceDetectManager.start()
-            Cam2.logOutput("iS", "starting done")
+            Cam2.logOutput("$logtag iS", "starting done")
         }, 1, TimeUnit.SECONDS)
         faceDetectManager.setOnFaceDetectListener(this@MainActivity)
         faceDetectManager.setOnTrackListener(this@MainActivity)
@@ -328,8 +327,10 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     }
 
     override fun onDetectFace(status: Int, infos: Array<out FaceInfo>?, imageFrame: ImageFrame?) {
+        timeStamp = System.currentTimeMillis()
+
         if (imageFrame == null) {
-            Cam2.logOutput("oD", "null:" + imageFrame.toString())
+            Cam2.logOutput("$logtag oD", "null:${imageFrame.toString()}")
             return
         }
 
@@ -341,11 +342,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
             handler.post {
                 imageView.setImageBitmap(bitmap)
-//            Cam2.logOutput("oDF", bitmap.byteCount.toString())
             }
         }
-
-        timeStamp = System.currentTimeMillis()
 
         if (status != FaceTracker.ErrCode.OK.ordinal || infos == null) {
             return
@@ -396,7 +394,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
                 if (userIdOfMaxScore == userId) {
                     if (score < maxScore) {
-                        txt.append(sample_text.text)
+                        txt.append(sampletext.text)
                         txt.append("↓")
                     } else {
                         maxScore = score
@@ -475,7 +473,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
     private fun displaytxt(s: String) {
         handler.post {
-            sample_text.text = s
+            sampletext.text = s
         }
     }
 
