@@ -224,6 +224,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                             }
                             toast("注册失败")
                         } else {
+                            FaceApi.getInstance().group2Facesets.clear()
                             FaceApi.getInstance().loadFacesFromDB(groupId)
                             toast("更新: 人脸数据加载完成，即将开始1：N")
                             val count = FaceApi.getInstance().group2Facesets[groupId]!!.size
