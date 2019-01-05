@@ -226,11 +226,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                             }
                             toast("注册失败")
                         } else {
-                            FaceApi.getInstance().group2Facesets.clear()
-                            FaceApi.getInstance().loadFacesFromDB(groupId)
-                            toast("更新: 人脸数据加载完成，即将开始1：N")
-                            val count = FaceApi.getInstance().group2Facesets[groupId]!!.size
-                            displaytxt("更新: 底库人脸个数：$count")
+                            flushAPI()
                         }
                     }
                 } else if (ret == -1) {
@@ -268,6 +264,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                             choices.forEach {
                                 DBManager.getInstance().deleteUser(it, groupId)
                             }
+                            flushAPI()
                         }
                         setNegativeButton("取消", this@MainActivity)
                         setOnDismissListener(this@MainActivity)
@@ -278,6 +275,22 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 }, 10)
             }
         }
+    }
+
+    private fun flushAPI() {
+        identityStatus = FEATURE_DATAS_UNREADY
+
+        unknownFace = null
+        maxScore = -1f
+        userIdOfMaxScore = ""
+
+        FaceApi.getInstance().group2Facesets.clear()
+        FaceApi.getInstance().loadFacesFromDB(groupId)
+        toast("人脸数据加载完成，即将开始1：N")
+        val count = FaceApi.getInstance().group2Facesets[groupId]!!.size
+        displaytxt("底库人脸个数：$count")
+
+        handler.postDelayed({ identityStatus = IDENTITY_IDLE }, 100)
     }
 
     override fun initStart() {
@@ -305,12 +318,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 return@schedule
             }
             Thread.currentThread().priority = Thread.MAX_PRIORITY
-            // android.os.Process.setThreadPriority (-4);
-            FaceApi.getInstance().loadFacesFromDB(groupId)
-            toast("人脸数据加载完成，即将开始1：N")
-            val count = FaceApi.getInstance().group2Facesets[groupId]!!.size
-            displaytxt("底库人脸个数：$count")
-            identityStatus = IDENTITY_IDLE
+            flushAPI()
             (cameraImageSource.cameraControl as Cam2).sdkOk = true
             faceDetectManager.start()
             Cam2.logOutput("$logtag iS", "starting done")
@@ -359,13 +367,18 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             if (infos.isEmpty()) {
                 return@submit
             }
+            val txt = StringBuilder()
 
             val rgbScore = FaceLiveness.getInstance().rgbLiveness(
                     imageFrame.argb, imageFrame
                     .width, imageFrame.height, infos[0].landmarks
             )
+            txt.append("RGB活体耗时：${System.currentTimeMillis() - timeStamp}ms\t")
+            txt.append("RGB活体得分：$rgbScore\n")
 
             if (rgbScore <= FaceEnvironment.LIVENESS_RGB_THRESHOLD) {
+                txt.append("活体检测分数过低:$rgbScore")
+                toast(txt.toString())
                 return@submit
             }
 
@@ -374,6 +387,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             val roll = Math.abs(infos[0].headPose[2])
             // 人脸的三个角度大于20不进行识别
             if (raw > 20 || patch > 20 || roll > 20) {
+                txt.append("角度大于20度,请正视屏幕:($raw,$patch,$roll)")
+                toast(txt.toString())
                 return@submit
             }
 
@@ -384,45 +399,49 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             val cols = imageFrame.width
             val landmarks = infos[0].landmarks
 
+            Thread.currentThread().priority = Thread.MAX_PRIORITY
+
             val identifyRet = FaceApi.getInstance().identity(argb, rows, cols, landmarks, groupId)
             val score = identifyRet.score
             val userId = identifyRet.userId
 
             if (score < 80) {
+                txt.append("比对得分太低:$score\t")
+                txt.append("最近似的结果为:${identifyRet.userId}")
+                displaytxt(txt.toString())
                 return@submit
             }
 
-            handler.post {
-                val txt = StringBuilder()
+            unknownFace = null
 
-                if (userIdOfMaxScore == userId) {
-                    if (score < maxScore) {
-                        txt.append(sampletext.text)
-                        txt.append("↓")
-                    } else {
-                        maxScore = score
-                        txt.append("userId：$userId\tscore：$score↑")
-                    }
-                    displaytxt(txt.toString())
-                    return@post
+            if (userIdOfMaxScore == userId) {
+                if (score < maxScore) {
+                    txt.append(sampletext.text)
+                    txt.append("↓")
                 } else {
-                    userIdOfMaxScore = userId
                     maxScore = score
+                    txt.append("userId：$userId\tscore：$score↑")
                 }
-
-                txt.append("userId：$userId\tscore：$score")
-
-                val user = FaceApi.getInstance().getUserInfo(groupId, userId) ?: return@post
-
-                txt.append("\n" + user.userInfo)
-                try {
-                    showFace(getRegedFace(user.featureList[0]!!.imageName)!!, user.userInfo)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-                txt.append("\n特征抽取对比耗时:" + (System.currentTimeMillis() - timeStamp))
                 displaytxt(txt.toString())
+                return@submit
+            } else {
+                userIdOfMaxScore = userId
+                maxScore = score
             }
+
+            txt.append("userId：$userId\tscore：$score\t")
+
+            val user = FaceApi.getInstance().getUserInfo(groupId, userId) ?: return@submit
+
+            txt.append("名字:${user.userInfo}\n")
+            try {
+                showFace(getRegedFace(user.featureList[0]!!.imageName)!!, user.userInfo)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            txt.append("特征抽取对比耗时:${System.currentTimeMillis() - timeStamp}")
+            displaytxt(txt.toString())
+
             identityStatus = IDENTITY_IDLE
         }
     }
