@@ -154,7 +154,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
             AlertDialog.Builder(this@MainActivity).apply {
                 setTitle("操作?")
-                setMessage("请输入名称：")
                 if (hasFace) {
                     val faceView = ImageView(this@MainActivity).apply {
                         setImageBitmap(faceTOreg)
@@ -167,8 +166,11 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                     }
                     setView(layout)
                     setPositiveButton("注册", this@MainActivity)
+                    setMessage("请输入名称：")
+                } else {
+                    setMessage("要删除人脸吗：")
                 }
-                setNeutralButton("删除已注册", this@MainActivity)
+                setNeutralButton("删除已注册的人脸", this@MainActivity)
                 setNegativeButton("关闭", this@MainActivity)
                 setOnDismissListener(this@MainActivity)
                 show()
