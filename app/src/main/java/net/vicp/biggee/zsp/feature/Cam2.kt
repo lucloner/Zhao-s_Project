@@ -25,6 +25,8 @@ import com.baidu.aip.face.PreviewView
 import com.baidu.aip.face.camera.ICameraControl
 import com.baidu.aip.face.camera.PermissionCallback
 import java.util.concurrent.*
+import kotlin.math.max
+import kotlin.math.min
 
 @TargetApi(Build.VERSION_CODES.N)
 class Cam2 internal constructor(private var context: Context) : ICameraControl<Bitmap>, CameraDevice.StateCallback(),
@@ -53,13 +55,20 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     @Volatile
     private var timestamp = timenow
     private var check = false
-    private val imageReader: ImageReader by lazy { ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, 2) }
+    private lateinit var imageReader: ImageReader
     private lateinit var callback: PermissionCallback
     var sdkOk: Boolean = false
     private var backgroundThread: HandlerThread? = null
     private var handler: Handler? = null
     val frameQueue = LinkedBlockingDeque<Runnable>()
-    val framePool = ThreadPoolExecutor(2, MainActivity.CPUCORES, 1000 / FPS * MainActivity.CPUCORES.toLong(), TimeUnit.MILLISECONDS, frameQueue, this)
+    val framePool = ThreadPoolExecutor(
+            1,
+            1,
+            1000 / FPS * MainActivity.CPUCORES.toLong(),
+            TimeUnit.MILLISECONDS,
+            frameQueue,
+            this
+    )
 
     companion object {
         const val FPS = 30
@@ -115,7 +124,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * create a thread is rejected
      */
     override fun newThread(r: Runnable?): Thread? {
-        if (System.currentTimeMillis() - timestart > 1000 / FPS * framePool.corePoolSize || frameQueue.size > framePool.maximumPoolSize) {
+        if (System.currentTimeMillis() - timestart > 1000 / FPS * 2 || frameQueue.size > framePool.maximumPoolSize) {
             frameQueue.clear()
         }
         return Thread {
@@ -220,6 +229,8 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     override fun onOpened(camera: CameraDevice) {
         this.camera = camera
         try {
+            imageReader = ImageReader.newInstance(max(width, height), min(width, height), ImageFormat.YUV_420_888, 2)
+
             var width = this.width
             var height = this.height
             if (displayOrientation % 180 == 90) {
@@ -258,6 +269,10 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
                     CaptureRequest.CONTROL_AF_MODE,
                     CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
             )
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_ENABLE_ZSL, true)
+            }
 //            mPreviewRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION,90)
 
             mPreviewRequestBuilder.addTarget(surface)
@@ -265,11 +280,9 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
             val captureRequest = mPreviewRequestBuilder.build()
 
-            logOutput(logtag, "width:" + width +
-                    " height:" + height +
-                    " displayOrientation:" + displayOrientation +
-                    " previewView.textureView.width:" + previewView.textureView.width +
-                    " previewView.textureView.height:" + previewView.textureView.height
+            logOutput(
+                    logtag,
+                    "width:$width height:$height displayOrientation:$displayOrientation previewView.textureView.width:${previewView.textureView.width} previewView.textureView.height:${previewView.textureView.height}"
             )
 
             camera.createCaptureSession(
@@ -607,7 +620,8 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     private inner class CamDebuger : CameraCaptureSession.CaptureCallback() {
 
         override fun onCaptureStarted(session: CameraCaptureSession?, request: CaptureRequest?, timestamp: Long, frameNumber: Long) {
-            if (imageReader.surface == null || !previewView.textureView.isAvailable) {
+            if (imageReader.surface == null || previewView.textureView.surfaceTexture == null) {
+                checkAlive()
                 return
             }
             super.onCaptureStarted(session, request, timestamp, frameNumber)

@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private val previewView by lazy { findViewById<FrameLayout>(R.id.zsppreviewView) as TexturePreviewView }
     @Volatile
     private var identityStatus = FEATURE_DATAS_UNREADY
-    private val es: ScheduledExecutorService by lazy { Executors.newScheduledThreadPool(2) }
+    private val es: ScheduledExecutorService by lazy { Executors.newSingleThreadScheduledExecutor() }
     @Volatile
     private var timeStamp: Long = System.currentTimeMillis()
     @Volatile
@@ -72,7 +72,16 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private var txtName: EditText? = null
     private var showFace = false
     private val recogPool = LinkedBlockingQueue<Runnable>()
-    private val facePool: ThreadPoolExecutor by lazy { ThreadPoolExecutor(2, CPUCORES / 2, 300, TimeUnit.MILLISECONDS, recogPool, this) }
+    private val facePool: ThreadPoolExecutor by lazy {
+        ThreadPoolExecutor(
+                2,
+                2,
+                1000 / Cam2.FPS * 10.toLong(),
+                TimeUnit.MILLISECONDS,
+                recogPool,
+                this
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -140,10 +149,9 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * create a thread is rejected
      */
     override fun newThread(r: Runnable?): Thread? {
-        if (System.currentTimeMillis() - timeStamp > 1000 || recogPool.size > CPUCORES) {
+        if (System.currentTimeMillis() - timeStamp > 300 || recogPool.size > facePool.maximumPoolSize * 2) {
             try {
-                recogPool.remove(recogPool.last())
-                recogPool.remove(recogPool.last())
+                recogPool.clear()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -412,7 +420,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             return
         }
 
-        es.submit {
+        facePool.submit {
             if (infos.isEmpty()) {
                 return@submit
             }
