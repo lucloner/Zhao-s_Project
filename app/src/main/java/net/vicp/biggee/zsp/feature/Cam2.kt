@@ -60,15 +60,17 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     var sdkOk: Boolean = false
     private var backgroundThread: HandlerThread? = null
     private var handler: Handler? = null
-    val frameQueue = LinkedBlockingDeque<Runnable>()
-    val framePool = ThreadPoolExecutor(
-            1,
-            1,
-            1000 / FPS * MainActivity.CPUCORES.toLong(),
-            TimeUnit.MILLISECONDS,
-            frameQueue,
-            this
-    )
+    val frameQueue: LinkedBlockingDeque<Runnable> by lazy { LinkedBlockingDeque<Runnable>() }
+    val framePool: ThreadPoolExecutor by lazy {
+        ThreadPoolExecutor(
+                MainActivity.CPUCORES / 2,
+                MainActivity.CPUCORES / 2,
+                100,
+                TimeUnit.MILLISECONDS,
+                frameQueue,
+                this
+        )
+    }
 
     companion object {
         const val FPS = 30
@@ -124,9 +126,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * create a thread is rejected
      */
     override fun newThread(r: Runnable?): Thread? {
-        if (System.currentTimeMillis() - timestart > 1000 / FPS * 2 || frameQueue.size > framePool.maximumPoolSize) {
-            frameQueue.clear()
-        }
         return Thread {
             try {
                 r?.run()
@@ -203,13 +202,15 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
             image.close()
 
-            if (sdkOk && !stoped) {
+            if (sdkOk && !stoped && frameQueue.size < 1) {
                 val bmp = rotateBitmap(mRGBframeBitmap, 270f)
                 framePool.execute {
                     Thread.currentThread().priority = Thread.NORM_PRIORITY + 1
                     listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
                     bmp.recycle()
                 }
+            } else {
+                mRGBframeBitmap.recycle()
             }
         } catch (e: Exception) {
             e.printStackTrace()

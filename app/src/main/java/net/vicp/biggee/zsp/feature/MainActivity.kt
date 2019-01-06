@@ -40,12 +40,15 @@ import com.tapadoo.alerter.Alerter
 import net.vicp.biggee.zsp.R
 import java.io.File
 import java.util.*
-import java.util.concurrent.*
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import kotlin.collections.HashSet
 import kotlin.math.min
 
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
-        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener, ThreadFactory {
+        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener {
 
     // 用于检测人脸。
     private val faceDetectManager: FaceDetectManager by lazy { FaceDetectManager(applicationContext) }
@@ -71,17 +74,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private var wait = false
     private var txtName: EditText? = null
     private var showFace = false
-    private val recogPool = LinkedBlockingQueue<Runnable>()
-    private val facePool: ThreadPoolExecutor by lazy {
-        ThreadPoolExecutor(
-                2,
-                2,
-                1000 / Cam2.FPS * 10.toLong(),
-                TimeUnit.MILLISECONDS,
-                recogPool,
-                this
-        )
-    }
+    private val facePool: ThreadPoolExecutor by lazy { cameraControl.framePool }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -138,31 +131,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
         cameraImageSource.setCameraFacing(ICameraControl.CAMERA_FACING_FRONT)
         //cameraImageSource.start()
-    }
-
-    /**
-     * Constructs a new `Thread`.  Implementations may also initialize
-     * priority, name, daemon status, `ThreadGroup`, etc.
-     *
-     * @param r a runnable to be executed by new thread instance
-     * @return constructed thread, or `null` if the request to
-     * create a thread is rejected
-     */
-    override fun newThread(r: Runnable?): Thread? {
-        if (System.currentTimeMillis() - timeStamp > 300 || recogPool.size > facePool.maximumPoolSize * 2) {
-            try {
-                recogPool.clear()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-        return Thread {
-            try {
-                r?.run()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
     }
 
     /**
@@ -349,7 +317,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             toast("添加" + if (ret) "成功" else "失败")
         }
 
-        FaceSDKManager.getInstance().faceDetector.setMinFaceSize(200)
+        FaceSDKManager.getInstance().faceDetector.setMinFaceSize(80)
         faceDetectManager.imageSource = cameraImageSource
         faceDetectManager.faceFilter.setAngle(20)
         FaceSDKManager.getInstance().faceDetector.setNumberOfThreads(CPUCORES / 2)
@@ -365,7 +333,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 if (System.currentTimeMillis() - timeidle < IDLE_DELAY || identityStatus == IDENTITYING) {
                     return@scheduleAtFixedRate
                 }
-                recogPool.clear()
                 cameraControl.frameQueue.clear()
                 System.gc()
             }, IDLE_DELAY.toLong(), IDLE_DELAY.toLong(), TimeUnit.MILLISECONDS)
@@ -574,7 +541,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         faceDetectManager.stop()
 
         cameraControl.frameQueue.clear()
-        recogPool.clear()
 
         cameraControl.framePool.shutdown()
         es.shutdown()
