@@ -42,6 +42,7 @@ import java.io.File
 import java.util.*
 import java.util.concurrent.*
 import kotlin.collections.HashSet
+import kotlin.math.min
 
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
         FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener, ThreadFactory {
@@ -372,7 +373,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     }
 
     override fun onDetectFace(status: Int, infos: Array<out FaceInfo>?, imageFrame: ImageFrame?) {
-        timeStamp = System.currentTimeMillis()
+        val timeStamp = System.currentTimeMillis()
+        this.timeStamp = timeStamp
 
         if (imageFrame == null) {
             Cam2.logOutput("$logtag oD", "null:${imageFrame.toString()}")
@@ -485,9 +487,15 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                     e.printStackTrace()
                 }
 
-                timeidle = System.currentTimeMillis()
-                txt.append("特征抽取对比耗时: ${timeidle - timeStamp} ")
+                val timeidle = System.currentTimeMillis()
+                txt.append("特征抽取对比耗时: ${timeidle - timeStamp} \t")
+
+                val t = min(this.timeidle, cameraControl.timestart)
+                txt.append("最长可能时间: ${timeidle - t}")
+
                 displaytxt(txt.toString())
+
+                this.timeidle = timeidle
             }
             identityStatus = IDENTITY_IDLE
         }
@@ -507,6 +515,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * @param trackedModel 人脸信息
      */
     override fun onTrack(trackedModel: FaceFilter.TrackedModel?) {
+        timeidle = System.currentTimeMillis()
         unknownFace = trackedModel?.cropFace()
     }
 
@@ -563,7 +572,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         private const val IDENTITYING = 3
         private const val logtag = "Z's P-MA-"
         const val CPUCORES = 8
-        private const val IDLE_DELAY = 3000
+        private const val IDLE_DELAY = 2000
         var orientation: Int = 0
     }
 }

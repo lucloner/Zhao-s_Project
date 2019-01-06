@@ -12,7 +12,7 @@ import java.io.FileOutputStream;
 public class ImageConvert {
     private static final String TAG = ImageConvert.class.getSimpleName();
 
-    static {
+    public ImageConvert() {
         System.loadLibrary("ImageConvert");
     }
 

@@ -46,7 +46,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     @Volatile
     private var timenow = System.currentTimeMillis()
     @Volatile
-    private var timestart = timenow
+    var timestart = timenow
     private var camera: CameraDevice? = null
     private val flashMode = CameraMetadata.FLASH_MODE_OFF
     @Volatile
@@ -82,6 +82,10 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         fun logOutput(who: String, what: String) {
             Log.v(logtag + who, what)
         }
+    }
+
+    init {
+        ImageConvert()
     }
 
     /**
@@ -608,7 +612,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             Cam2.logOutput("s", "camChkOK!")
             stoped = false
         }
-        System.gc()
     }
 
     private inner class CamDebuger : CameraCaptureSession.CaptureCallback() {
