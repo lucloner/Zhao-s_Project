@@ -166,6 +166,8 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @see android.media.Image
      */
     override fun onImageAvailable(reader: ImageReader?) {
+        val frameDestroyer = Handler()
+
         try {
             image = reader?.acquireLatestImage()
 
@@ -199,7 +201,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
             this.mRGBframeBitmap = rotateBitmap(mRGBframeBitmap, 270f)
 
-            image.close()
+            frameDestroyer.post { image.close() }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -209,6 +211,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             exe.execute {
                 Thread.currentThread().priority = Thread.MAX_PRIORITY
                 listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
+                frameDestroyer.post { bmp.recycle() }
             }
         }
     }
