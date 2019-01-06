@@ -611,7 +611,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     private inner class CamDebuger : CameraCaptureSession.CaptureCallback() {
 
         override fun onCaptureStarted(session: CameraCaptureSession?, request: CaptureRequest?, timestamp: Long, frameNumber: Long) {
-            if (surface == null || imageReader.surface == null) {
+            if (imageReader.surface == null || !previewView.textureView.isAvailable) {
                 return
             }
             super.onCaptureStarted(session, request, timestamp, frameNumber)
