@@ -10,7 +10,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.hardware.camera2.*
-import android.media.Image
 import android.media.ImageReader
 import android.os.Build
 import android.os.Handler
@@ -64,8 +63,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     var sdkOk: Boolean = false
     private var backgroundThread: HandlerThread? = null
     private var handler: Handler? = null
-    @Volatile
-    private var image: Image? = null
     private var cnt = 0
 
     companion object {
@@ -166,12 +163,8 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @see android.media.Image
      */
     override fun onImageAvailable(reader: ImageReader?) {
-        val frameDestroyer = Handler()
-
         try {
-            image = reader?.acquireLatestImage()
-
-            val image = this.image ?: return
+            val image = reader?.acquireLatestImage() ?: return
             val plane = image.planes
             val mYUVBytes = arrayOfNulls<ByteArray>(plane.size)
 
@@ -201,7 +194,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
             this.mRGBframeBitmap = rotateBitmap(mRGBframeBitmap, 270f)
 
-            frameDestroyer.post { image.close() }
+            image.close()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -211,7 +204,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             exe.execute {
                 Thread.currentThread().priority = Thread.MAX_PRIORITY
                 listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
-                frameDestroyer.post { bmp.recycle() }
+                bmp.recycle()
             }
         }
     }
