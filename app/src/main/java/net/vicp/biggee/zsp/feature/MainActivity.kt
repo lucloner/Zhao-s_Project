@@ -349,7 +349,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
             handler.post {
                 val timestamp = this@MainActivity.timeStamp
-                var bitmap: Bitmap?
+                val bitmap: Bitmap?
                 if (System.currentTimeMillis() - timestamp > 300) {
                     return@post
                 } else if (System.currentTimeMillis() - timestamp < 100) {
