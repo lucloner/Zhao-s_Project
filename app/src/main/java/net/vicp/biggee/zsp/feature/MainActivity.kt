@@ -346,13 +346,22 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         }
 
         if (!showFace) {
-            val bitmap = Bitmap.createBitmap(
-                    imageFrame.argb, imageFrame.width, imageFrame.height, Bitmap.Config
-                    .ARGB_8888
-            )
 
             handler.post {
+                val timestamp = this@MainActivity.timeStamp
+                var bitmap: Bitmap?
+                if (System.currentTimeMillis() - timestamp > 300) {
+                    return@post
+                } else if (System.currentTimeMillis() - timestamp < 100) {
+                    bitmap = Bitmap.createBitmap(
+                            imageFrame.argb, imageFrame.width, imageFrame.height, Bitmap.Config
+                            .ARGB_8888
+                    )
+                } else {
+                    bitmap = unknownFace ?: return@post
+                }
                 imageView.setImageBitmap(bitmap)
+                bitmap?.recycle()
             }
         }
 
