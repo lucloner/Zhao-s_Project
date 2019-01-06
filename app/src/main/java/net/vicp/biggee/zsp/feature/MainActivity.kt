@@ -361,7 +361,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                     bitmap = unknownFace ?: return@post
                 }
                 imageView.setImageBitmap(bitmap)
-                bitmap?.recycle()
+                //bitmap?.recycle()
             }
         }
 
