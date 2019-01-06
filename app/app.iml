@@ -183,9 +183,5 @@
     <orderEntry type="library" name="Gradle: android.arch.lifecycle:runtime-1.0.0" level="project" />
     <orderEntry type="module" module-name="library" />
     <orderEntry type="module" module-name="cpp" />
-    <orderEntry type="module" module-name="library" />
-    <orderEntry type="module" module-name="cpp" />
-    <orderEntry type="module" module-name="library" />
-    <orderEntry type="module" module-name="cpp" />
   </component>
 </module>

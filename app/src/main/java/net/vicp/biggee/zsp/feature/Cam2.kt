@@ -48,8 +48,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     var timestart = timenow
     private var camera: CameraDevice? = null
     private val flashMode = CameraMetadata.FLASH_MODE_OFF
-    @Volatile
-    private lateinit var mRGBframeBitmap: Bitmap
     private lateinit var listener: ICameraControl.OnFrameListener<Any>
     private var exe = Executors.newSingleThreadScheduledExecutor()
     @Volatile
@@ -194,20 +192,18 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             val mRGBframeBitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
             mRGBframeBitmap.setPixels(mRGBBytes, 0, image.width, 0, 0, image.width, image.height)
 
-            this.mRGBframeBitmap = rotateBitmap(mRGBframeBitmap, 270f)
-
             image.close()
+
+            if (sdkOk && !stoped) {
+                val bmp = rotateBitmap(mRGBframeBitmap, 270f)
+                framePool.execute {
+                    Thread.currentThread().priority = Thread.NORM_PRIORITY + 1
+                    listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
+                    bmp.recycle()
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
-        }
-
-        if (sdkOk && !stoped) {
-            val bmp = this.mRGBframeBitmap
-            framePool.execute {
-                Thread.currentThread().priority = Thread.NORM_PRIORITY + 1
-                listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
-                bmp.recycle()
-            }
         }
     }
 
