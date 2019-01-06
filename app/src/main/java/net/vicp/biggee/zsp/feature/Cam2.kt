@@ -25,10 +25,7 @@ import cn.mclover.util.ImageConvert
 import com.baidu.aip.face.PreviewView
 import com.baidu.aip.face.camera.ICameraControl
 import com.baidu.aip.face.camera.PermissionCallback
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.ThreadFactory
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 
 @TargetApi(Build.VERSION_CODES.N)
 class Cam2 internal constructor(private var context: Context) : ICameraControl<Bitmap>, CameraDevice.StateCallback(),
@@ -48,13 +45,14 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     private var previewFrame: Rect? = null
     @Volatile
     private var timenow = System.currentTimeMillis()
+    @Volatile
     private var timestart = timenow
     private var camera: CameraDevice? = null
     private val flashMode = CameraMetadata.FLASH_MODE_OFF
     @Volatile
     private lateinit var mRGBframeBitmap: Bitmap
     private lateinit var listener: ICameraControl.OnFrameListener<Any>
-    private var exe: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(this)
+    private var exe = Executors.newSingleThreadScheduledExecutor()
     @Volatile
     private var timestamp = timenow
     private var check = false
@@ -63,9 +61,11 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     var sdkOk: Boolean = false
     private var backgroundThread: HandlerThread? = null
     private var handler: Handler? = null
-    private var cnt = 0
+    val frameQueue = LinkedBlockingDeque<Runnable>()
+    val framePool = ThreadPoolExecutor(2, MainActivity.CPUCORES, 1000 / FPS * MainActivity.CPUCORES.toLong(), TimeUnit.MILLISECONDS, frameQueue, this)
 
     companion object {
+        const val FPS = 30
         private const val hardwareDelay = 1000
         private const val CAMDIE = 32768
         private const val logtag = "Z's P-C2-"
@@ -114,17 +114,15 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * create a thread is rejected
      */
     override fun newThread(r: Runnable?): Thread? {
-        if (cnt > 8) {
-            return null
+        if (System.currentTimeMillis() - timestart > 1000 / FPS * framePool.corePoolSize || frameQueue.size > framePool.maximumPoolSize) {
+            frameQueue.clear()
         }
         return Thread {
-            cnt++
             try {
                 r?.run()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            cnt--
         }
     }
 
@@ -163,6 +161,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @see android.media.Image
      */
     override fun onImageAvailable(reader: ImageReader?) {
+        timestart = System.currentTimeMillis()
         try {
             val image = reader?.acquireLatestImage() ?: return
             val plane = image.planes
@@ -201,7 +200,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
         if (sdkOk && !stoped) {
             val bmp = this.mRGBframeBitmap
-            exe.execute {
+            framePool.execute {
                 Thread.currentThread().priority = Thread.MAX_PRIORITY
                 listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
                 bmp.recycle()
@@ -393,8 +392,8 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @param surface The surface just updated
      */
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
-        texture = surface
         timenow = System.currentTimeMillis()
+        texture = surface
     }
 
     /**

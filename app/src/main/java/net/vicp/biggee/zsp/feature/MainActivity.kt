@@ -40,33 +40,38 @@ import com.tapadoo.alerter.Alerter
 import net.vicp.biggee.zsp.R
 import java.io.File
 import java.util.*
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import kotlin.collections.HashSet
 
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
-        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener {
+        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener, ThreadFactory {
 
     // 用于检测人脸。
     private val faceDetectManager: FaceDetectManager by lazy { FaceDetectManager(applicationContext) }
     private val handler: Handler = Handler()
     private val groupId: String = "ZsP"
     private val cameraImageSource: Cam2ImgSrc by lazy { Cam2ImgSrc(this) }
+    private val cameraControl: Cam2 by lazy { cameraImageSource.cameraControl as Cam2 }
     private val previewView by lazy { findViewById<FrameLayout>(R.id.zsppreviewView) as TexturePreviewView }
     @Volatile
     private var identityStatus = FEATURE_DATAS_UNREADY
     private val es: ScheduledExecutorService by lazy { Executors.newSingleThreadScheduledExecutor() }
+    @Volatile
     private var timeStamp: Long = System.currentTimeMillis()
+    @Volatile
+    private var timeidle = timeStamp
     private lateinit var imageView: ImageView
     private lateinit var sampletext: TextView
     private var userIdOfMaxScore = ""
     private var maxScore = 0f
+    @Volatile
     private var unknownFace: Bitmap? = null
     private var faceTOreg: Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
     private var wait = false
     private var txtName: EditText? = null
     private var showFace = false
+    private val recogPool = LinkedBlockingQueue<Runnable>()
+    private val facePool: ThreadPoolExecutor by lazy { ThreadPoolExecutor(1, CPUCORES / 2, 1, TimeUnit.SECONDS, recogPool, this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,24 +131,45 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     }
 
     /**
+     * Constructs a new `Thread`.  Implementations may also initialize
+     * priority, name, daemon status, `ThreadGroup`, etc.
+     *
+     * @param r a runnable to be executed by new thread instance
+     * @return constructed thread, or `null` if the request to
+     * create a thread is rejected
+     */
+    override fun newThread(r: Runnable?): Thread? {
+        if (System.currentTimeMillis() - timeStamp > 1000 || recogPool.size > CPUCORES) {
+            recogPool.remove()
+        }
+        return Thread {
+            try {
+                r?.run()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
      * This method will be invoked when the dialog is dismissed.
      *
      * @param dialog the dialog that was dismissed will be passed into the
      * method
      */
     override fun onDismiss(dialog: DialogInterface?) {
-        Cam2.logOutput("$logtag oD", "Dismissed!:$wait\t${(cameraImageSource.cameraControl as Cam2).sdkOk}")
-        (cameraImageSource.cameraControl as Cam2).sdkOk = wait
+        Cam2.logOutput("$logtag oD", "Dismissed!:$wait\t${cameraControl.sdkOk}")
+        cameraControl.sdkOk = wait
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
         Cam2.logOutput("$logtag oC", "dispatchTouchEvent!${ev?.action}")
-        if (!(cameraImageSource.cameraControl as Cam2).sdkOk) {
+        if (!cameraControl.sdkOk) {
             return true
         }
         if (ev?.action == MotionEvent.ACTION_UP) {
-            wait = (cameraImageSource.cameraControl as Cam2).sdkOk
-            (cameraImageSource.cameraControl as Cam2).sdkOk = false
+            wait = cameraControl.sdkOk
+            cameraControl.sdkOk = false
             var hasFace = false
             try {
                 faceTOreg = unknownFace!!.copy(Bitmap.Config.ARGB_8888, false)
@@ -268,8 +294,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                         }
                         setNegativeButton("取消", this@MainActivity)
                         setOnDismissListener(this@MainActivity)
-                        wait = (cameraImageSource.cameraControl as Cam2).sdkOk
-                        (cameraImageSource.cameraControl as Cam2).sdkOk = false
+                        wait = cameraControl.sdkOk
+                        cameraControl.sdkOk = false
                         show()
                     }
                 }, 10)
@@ -312,15 +338,23 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         FaceSDKManager.getInstance().faceDetector.setMinFaceSize(200)
         faceDetectManager.imageSource = cameraImageSource
         faceDetectManager.faceFilter.setAngle(20)
-        FaceSDKManager.getInstance().faceDetector.setNumberOfThreads(4)
+        FaceSDKManager.getInstance().faceDetector.setNumberOfThreads(CPUCORES / 2)
         es.schedule({
             if (identityStatus != FEATURE_DATAS_UNREADY) {
                 return@schedule
             }
             Thread.currentThread().priority = Thread.MAX_PRIORITY
             flushAPI()
-            (cameraImageSource.cameraControl as Cam2).sdkOk = true
+            cameraControl.sdkOk = true
             faceDetectManager.start()
+            es.scheduleAtFixedRate({
+                if (System.currentTimeMillis() - timeidle < IDLE_DELAY || identityStatus == IDENTITYING) {
+                    return@scheduleAtFixedRate
+                }
+                recogPool.clear()
+                cameraControl.frameQueue.clear()
+                System.gc()
+            }, IDLE_DELAY.toLong(), IDLE_DELAY.toLong(), TimeUnit.MILLISECONDS)
             Cam2.logOutput("$logtag iS", "starting done")
         }, 1, TimeUnit.SECONDS)
         faceDetectManager.setOnFaceDetectListener(this@MainActivity)
@@ -346,7 +380,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         }
 
         if (!showFace) {
-
             handler.post {
                 val timestamp = this@MainActivity.timeStamp
                 val bitmap: Bitmap?
@@ -382,11 +415,11 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                     imageFrame.argb, imageFrame
                     .width, imageFrame.height, infos[0].landmarks
             )
-            txt.append("RGB活体耗时：${System.currentTimeMillis() - timeStamp}ms\t")
-            txt.append("RGB活体得分：$rgbScore\n")
+            txt.append("RGB活体耗时：${System.currentTimeMillis() - timeStamp}ms \t")
+            txt.append("RGB活体得分：$rgbScore \n")
 
             if (rgbScore <= FaceEnvironment.LIVENESS_RGB_THRESHOLD) {
-                txt.append("活体检测分数过低:$rgbScore")
+                txt.append("活体检测分数过低: $rgbScore")
                 toast(txt.toString())
                 return@submit
             }
@@ -396,61 +429,66 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             val roll = Math.abs(infos[0].headPose[2])
             // 人脸的三个角度大于20不进行识别
             if (raw > 20 || patch > 20 || roll > 20) {
-                txt.append("角度大于20度,请正视屏幕:($raw,$patch,$roll)")
+                txt.append("角度大于20度,请正视屏幕: ($raw,$patch,$roll) ")
                 toast(txt.toString())
                 return@submit
             }
 
             identityStatus = IDENTITYING
 
-            val argb = imageFrame.argb
-            val rows = imageFrame.height
-            val cols = imageFrame.width
-            val landmarks = infos[0].landmarks
+            facePool.execute {
+                val argb = imageFrame.argb
+                val rows = imageFrame.height
+                val cols = imageFrame.width
+                val landmarks = infos[0].landmarks
 
-            Thread.currentThread().priority = Thread.MAX_PRIORITY
+                Thread.currentThread().priority = Thread.MAX_PRIORITY
 
-            val identifyRet = FaceApi.getInstance().identity(argb, rows, cols, landmarks, groupId)
-            val score = identifyRet.score
-            val userId = identifyRet.userId
+                val identifyRet = FaceApi.getInstance().identity(argb, rows, cols, landmarks, groupId)
+                val score = identifyRet.score
+                val userId = identifyRet.userId
 
-            if (score < 80) {
-                txt.append("比对得分太低:$score\t")
-                txt.append("最近似的结果为:${identifyRet.userId}")
-                displaytxt(txt.toString())
-                return@submit
-            }
-
-            unknownFace = null
-
-            if (userIdOfMaxScore == userId) {
-                if (score < maxScore) {
-                    txt.append(sampletext.text)
-                    txt.append("↓")
-                } else {
-                    maxScore = score
-                    txt.append("userId：$userId\tscore：$score↑")
+                if (score < 80) {
+                    txt.append("比对得分太低: $score \t")
+                    txt.append("最近似的结果为: ${identifyRet.userId} ")
+                    displaytxt(txt.toString())
+                    return@execute
                 }
+
+                cameraControl.framePool.purge()
+                facePool.purge()
+                unknownFace = null
+
+                if (userIdOfMaxScore == userId) {
+                    if (score < maxScore) {
+                        txt.append(sampletext.text)
+                        txt.append("↓")
+                    } else {
+                        maxScore = score
+                        txt.append("userId: $userId \tscore: $score↑")
+                    }
+                    displaytxt(txt.toString())
+                    return@execute
+                } else {
+                    userIdOfMaxScore = userId
+                    maxScore = score
+                }
+
+                txt.append("userId:$userId \tscore: $score \t")
+
+                val user = FaceApi.getInstance().getUserInfo(groupId, userId) ?: return@execute
+
+                txt.append("名字: ${user.userInfo} \n")
+                try {
+                    showFace(getRegedFace(user.featureList[0]!!.imageName)!!, user.userInfo)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                timeidle = System.currentTimeMillis()
+                txt.append("特征抽取对比耗时: ${timeidle - timeStamp} ")
                 displaytxt(txt.toString())
-                return@submit
-            } else {
-                userIdOfMaxScore = userId
-                maxScore = score
             }
-
-            txt.append("userId：$userId\tscore：$score\t")
-
-            val user = FaceApi.getInstance().getUserInfo(groupId, userId) ?: return@submit
-
-            txt.append("名字:${user.userInfo}\n")
-            try {
-                showFace(getRegedFace(user.featureList[0]!!.imageName)!!, user.userInfo)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-            txt.append("特征抽取对比耗时:${System.currentTimeMillis() - timeStamp}")
-            displaytxt(txt.toString())
-
             identityStatus = IDENTITY_IDLE
         }
     }
@@ -497,7 +535,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
     override fun onResume() {
         super.onResume()
-        if ((cameraImageSource.cameraControl as Cam2).sdkOk) {
+        if (cameraControl.sdkOk) {
             faceDetectManager.start()
         }
     }
@@ -524,6 +562,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         private const val IDENTITY_IDLE = 2
         private const val IDENTITYING = 3
         private const val logtag = "Z's P-MA-"
+        const val CPUCORES = 8
+        private const val IDLE_DELAY = 3000
         var orientation: Int = 0
     }
 }
