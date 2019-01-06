@@ -14,7 +14,6 @@ import android.media.ImageReader
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
-import android.support.v4.app.ActivityCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.util.SparseIntArray
@@ -205,7 +204,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         if (sdkOk && !stoped) {
             val bmp = this.mRGBframeBitmap
             framePool.execute {
-                Thread.currentThread().priority = Thread.MAX_PRIORITY
+                Thread.currentThread().priority = Thread.NORM_PRIORITY + 1
                 listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
                 bmp.recycle()
             }
@@ -233,8 +232,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             }
 
             previewFrame = Rect(0, 0, width, height)
-            textureView = previewView.textureView
-            texture = textureView.surfaceTexture
 
             imageReader.setOnImageAvailableListener(this, handler)
 
@@ -397,7 +394,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      */
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
         timenow = System.currentTimeMillis()
-        texture = surface
+//        texture = surface
     }
 
     /**
@@ -422,7 +419,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
      * @param height The height of the surface
      */
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-        texture = surface
+//        texture = surface
         checkAlive()
     }
 
@@ -437,7 +434,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         if (!stoped) {
             pause()
         }
-        @SuppressLint("WrongConstant") val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        @SuppressLint("WrongConstant") val manager = context.applicationContext.getSystemService(Context.CAMERA_SERVICE) as CameraManager
         startBackgroundThread()
         try {
             val camIDs = manager.cameraIdList
@@ -454,18 +451,14 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
                     // Here, thisActivity is the current activity
                     if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                         // Should we show an explanation?
-                        if (ActivityCompat.shouldShowRequestPermissionRationale(
-                                        thisActivity!!,
-                                        Manifest.permission.CAMERA
-                                )
+                        if (thisActivity!!.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)
                         ) {
                             // Show an expanation to the user *asynchronously* -- don't block
                             // this thread waiting for the user's response! After the user
                             // sees the explanation, try again to request the permission.
                         } else {
                             // No explanation needed, we can request the permission.
-                            ActivityCompat.requestPermissions(
-                                    thisActivity,
+                            thisActivity.requestPermissions(
                                     arrayOf(Manifest.permission.CAMERA),
                                     REQUEST_CAMERA_PERMISSION
                             )
@@ -481,6 +474,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
                         logOutput("start", "ready to start camera2")
                         manager.openCamera(camIDs[cameraFacing], this, handler)
                     }
+                    context = context.applicationContext
                 } catch (e: CameraAccessException) {
                     e.printStackTrace()
                 }
@@ -615,6 +609,13 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     }
 
     private inner class CamDebuger : CameraCaptureSession.CaptureCallback() {
+
+        override fun onCaptureStarted(session: CameraCaptureSession?, request: CaptureRequest?, timestamp: Long, frameNumber: Long) {
+            if (surface == null || imageReader.surface == null) {
+                return
+            }
+            super.onCaptureStarted(session, request, timestamp, frameNumber)
+        }
 
         override fun onCaptureProgressed(
                 session: CameraCaptureSession,

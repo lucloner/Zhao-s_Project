@@ -9,7 +9,7 @@ import com.baidu.aip.face.ImageSource
 import com.baidu.aip.face.PreviewView
 import com.baidu.aip.face.camera.ICameraControl
 
-class Cam2ImgSrc(context: Context) : ImageSource(), ICameraControl.OnFrameListener<Bitmap> {
+class Cam2ImgSrc(var context: Context) : ImageSource(), ICameraControl.OnFrameListener<Bitmap> {
     /**
      * 相机控制类
      */
@@ -21,6 +21,7 @@ class Cam2ImgSrc(context: Context) : ImageSource(), ICameraControl.OnFrameListen
         cameraControl = Cam2(context)
         cameraControl.setCameraFacing(cameraFaceType)
         cameraControl.setOnFrameListener(this)
+        context = context.applicationContext
     }
 
     companion object {

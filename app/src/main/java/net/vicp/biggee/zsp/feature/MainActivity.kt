@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private val previewView by lazy { findViewById<FrameLayout>(R.id.zsppreviewView) as TexturePreviewView }
     @Volatile
     private var identityStatus = FEATURE_DATAS_UNREADY
-    private val es: ScheduledExecutorService by lazy { Executors.newSingleThreadScheduledExecutor() }
+    private val es: ScheduledExecutorService by lazy { Executors.newScheduledThreadPool(2) }
     @Volatile
     private var timeStamp: Long = System.currentTimeMillis()
     @Volatile
@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private var txtName: EditText? = null
     private var showFace = false
     private val recogPool = LinkedBlockingQueue<Runnable>()
-    private val facePool: ThreadPoolExecutor by lazy { ThreadPoolExecutor(1, CPUCORES / 2, 1, TimeUnit.SECONDS, recogPool, this) }
+    private val facePool: ThreadPoolExecutor by lazy { ThreadPoolExecutor(2, CPUCORES / 2, 300, TimeUnit.MILLISECONDS, recogPool, this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,11 +83,11 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         imageView = findViewById(R.id.zspimageView)
 
         try {
-            PreferencesUtil.initPrefs(this)
+            PreferencesUtil.initPrefs(applicationContext)
             // 使用人脸1：n时使用
-            DBManager.getInstance().init(this)
+            DBManager.getInstance().init(applicationContext)
 //        livnessTypeTip();
-            FaceSDKManager.getInstance().init(this)
+            FaceSDKManager.getInstance().init(applicationContext)
             FaceSDKManager.getInstance().setSdkInitListener(this)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -141,7 +141,12 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      */
     override fun newThread(r: Runnable?): Thread? {
         if (System.currentTimeMillis() - timeStamp > 1000 || recogPool.size > CPUCORES) {
-            recogPool.remove()
+            try {
+                recogPool.remove(recogPool.last())
+                recogPool.remove(recogPool.last())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
         return Thread {
             try {
@@ -412,7 +417,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 return@submit
             }
             val txt = StringBuilder()
-
+            Thread.currentThread().priority = Thread.MAX_PRIORITY - 3
             val rgbScore = FaceLiveness.getInstance().rgbLiveness(
                     imageFrame.argb, imageFrame
                     .width, imageFrame.height, infos[0].landmarks
@@ -444,7 +449,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 val cols = imageFrame.width
                 val landmarks = infos[0].landmarks
 
-                Thread.currentThread().priority = Thread.MAX_PRIORITY
+                Thread.currentThread().priority = Thread.MAX_PRIORITY - 2
 
                 val identifyRet = FaceApi.getInstance().identity(argb, rows, cols, landmarks, groupId)
                 val score = identifyRet.score
@@ -559,6 +564,13 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         super.onDestroy()
         faceDetectManager.imageSource?.stop()
         faceDetectManager.stop()
+
+        cameraControl.frameQueue.clear()
+        recogPool.clear()
+
+        cameraControl.framePool.shutdown()
+        es.shutdown()
+        facePool.shutdown()
     }
 
     override fun onStop() {
@@ -572,7 +584,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         private const val IDENTITYING = 3
         private const val logtag = "Z's P-MA-"
         const val CPUCORES = 8
-        private const val IDLE_DELAY = 2000
+        private const val IDLE_DELAY = 60000
         var orientation: Int = 0
     }
 }
