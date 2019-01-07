@@ -11,7 +11,6 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AppCompatActivity
@@ -102,7 +101,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
                 // app-defined int constant. The callback method gets the
                 // result of the request.
-                return
             }
         }
 
@@ -317,6 +315,16 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         maxScore = -1f
         userIdOfMaxScore = ""
 
+        if (FaceApi.getInstance().getGroupList(0, 1000).size <= 0) {
+            toast("创建用户组$groupId")
+            //创建分组0
+            val group = Group()
+            group.groupId = groupId
+            val ret = FaceApi.getInstance().groupAdd(group)
+            Thread.sleep(2000)
+            toast("添加${if (ret) "成功" else "失败"}")
+        }
+
         FaceApi.getInstance().group2Facesets.clear()
         FaceApi.getInstance().loadFacesFromDB(groupId)
         toast("人脸数据加载完成，即将开始1：N")
@@ -332,15 +340,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
     override fun initSuccess() {
         toast("sdk init success")
-
-        if (FaceApi.getInstance().getGroupList(0, 1000).size <= 0) {
-            toast("创建用户组$groupId")
-            //创建分组0
-            val group = Group()
-            group.groupId = groupId
-            val ret = FaceApi.getInstance().groupAdd(group)
-            toast("添加" + if (ret) "成功" else "失败")
-        }
 
         FaceSDKManager.getInstance().faceDetector.setMinFaceSize(200)
         faceDetectManager.imageSource = cameraImageSource
@@ -388,20 +387,19 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
         if (!showFace) {
             handler.post {
-                val timestamp = this@MainActivity.timeStamp
-                val bitmap: Bitmap?
-                if (System.currentTimeMillis() - timestamp > 300) {
-                    return@post
-                } else if (System.currentTimeMillis() - timestamp < 100) {
-                    bitmap = Bitmap.createBitmap(
-                            imageFrame.argb, imageFrame.width, imageFrame.height, Bitmap.Config
-                            .ARGB_8888
-                    )
-                } else {
-                    bitmap = unknownFace ?: return@post
+                if (timeStamp - timeidle > 5000) {
+                    unknownFace = null
                 }
-                imageView.setImageBitmap(bitmap)
-                //bitmap?.recycle()
+                if (identityStatus == IDENTITY_IDLE && System.currentTimeMillis() - timeStamp < 66) {
+                    imageView.setImageBitmap(
+                            unknownFace ?: Bitmap.createBitmap(
+                                    imageFrame.argb,
+                                    imageFrame.width,
+                                    imageFrame.height,
+                                    Bitmap.Config
+                                            .ARGB_8888
+                            ))
+                }
             }
         }
 
@@ -527,11 +525,14 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     }
 
     private fun showFace(face: Bitmap, name: String) {
+        if (Alerter.isShowing) {
+            Alerter.hide()
+        }
         Alerter.create(this)
                 .setTitle("识别！")
                 .setText(name)
                 .hideIcon()
-                .setBackgroundColorInt(Color.LTGRAY)
+                .setBackgroundColorInt(R.color.colorAccent)
                 .show()
         showFace = true
         handler.post {
@@ -541,11 +542,15 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     }
 
     private fun toast(s: String) {
+        if (Alerter.isShowing) {
+            Alerter.hide()
+        }
         Alerter.create(this)
                 .setTitle(title.toString())
                 .setText(s)
                 .hideIcon()
                 .enableVibration(false)
+                .setBackgroundColorInt(R.color.colorPrimary)
                 .show()
     }
 
