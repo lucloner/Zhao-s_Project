@@ -3,18 +3,15 @@ package net.vicp.biggee.zsp.feature
 
 //import androidx.appcompat.app.AppCompatActivity
 //import androidx.core.app.ActivityCompat
-import android.Manifest
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.*
 import android.hardware.camera2.*
 import android.media.ImageReader
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
-import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.util.SparseIntArray
 import android.view.Surface
@@ -24,13 +21,14 @@ import cn.mclover.util.ImageConvert
 import com.baidu.aip.face.PreviewView
 import com.baidu.aip.face.camera.ICameraControl
 import com.baidu.aip.face.camera.PermissionCallback
-import java.util.concurrent.*
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
 
 @TargetApi(Build.VERSION_CODES.N)
-class Cam2 internal constructor(private var context: Context) : ICameraControl<Bitmap>, CameraDevice.StateCallback(),
-        TextureView.SurfaceTextureListener, ICameraControl.OnTakePictureCallback, ImageReader.OnImageAvailableListener, ThreadFactory {
+class Cam2 internal constructor(val context: Context) : ICameraControl<Bitmap>, CameraDevice.StateCallback(),
+        TextureView.SurfaceTextureListener, ICameraControl.OnTakePictureCallback, ImageReader.OnImageAvailableListener {
     private var cameraFacing: Int = ICameraControl.CAMERA_FACING_FRONT
     private var width = 720
     private var height = 1280
@@ -60,24 +58,13 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     var sdkOk: Boolean = false
     private var backgroundThread: HandlerThread? = null
     private var handler: Handler? = null
-    val frameQueue: LinkedBlockingDeque<Runnable> by lazy { LinkedBlockingDeque<Runnable>() }
-    val framePool: ThreadPoolExecutor by lazy {
-        ThreadPoolExecutor(
-                MainActivity.CPUCORES / 2,
-                MainActivity.CPUCORES / 2,
-                100,
-                TimeUnit.MILLISECONDS,
-                frameQueue,
-                this
-        )
-    }
 
     companion object {
         const val FPS = 30
         private const val hardwareDelay = 1000
         private const val CAMDIE = 32768
         private const val logtag = "Z's P-C2-"
-        private const val REQUEST_CAMERA_PERMISSION = 1
+        const val REQUEST_CAMERA_PERMISSION = 1
         private val ORIENTATIONS = SparseIntArray()
 
         init {
@@ -115,24 +102,6 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
         }
         origin.recycle()
         return newBM
-    }
-
-    /**
-     * Constructs a new `Thread`.  Implementations may also initialize
-     * priority, name, daemon status, `ThreadGroup`, etc.
-     *
-     * @param r a runnable to be executed by new thread instance
-     * @return constructed thread, or `null` if the request to
-     * create a thread is rejected
-     */
-    override fun newThread(r: Runnable?): Thread? {
-        return Thread {
-            try {
-                r?.run()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
     }
 
     /**
@@ -202,15 +171,11 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
             image.close()
 
-            if (sdkOk && !stoped && frameQueue.size < 1) {
+            if (sdkOk && !stoped) {
                 val bmp = rotateBitmap(mRGBframeBitmap, 270f)
-                framePool.execute {
-                    Thread.currentThread().priority = Thread.NORM_PRIORITY + 1
-                    listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
-                    bmp.recycle()
-                }
-            } else {
-                mRGBframeBitmap.recycle()
+                Thread.currentThread().priority = Thread.NORM_PRIORITY + 1
+                listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
+                bmp.recycle()
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -440,11 +405,12 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
     /**
      * 打开相机。
      */
+    @SuppressLint("MissingPermission")
     override fun start() {
         if (!stoped) {
             pause()
         }
-        @SuppressLint("WrongConstant") val manager = context.applicationContext.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        @SuppressLint("WrongConstant") val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
         startBackgroundThread()
         try {
             val camIDs = manager.cameraIdList
@@ -453,38 +419,12 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
 
             handler?.postDelayed({
                 try {
-                    var thisActivity: AppCompatActivity? = null
-                    if (context is AppCompatActivity) {
-                        thisActivity = context as AppCompatActivity
-                    }
-
-                    // Here, thisActivity is the current activity
-                    if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                        // Should we show an explanation?
-                        if (thisActivity!!.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)
-                        ) {
-                            // Show an expanation to the user *asynchronously* -- don't block
-                            // this thread waiting for the user's response! After the user
-                            // sees the explanation, try again to request the permission.
-                        } else {
-                            // No explanation needed, we can request the permission.
-                            thisActivity.requestPermissions(
-                                    arrayOf(Manifest.permission.CAMERA),
-                                    REQUEST_CAMERA_PERMISSION
-                            )
-                            // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
-                            // app-defined int constant. The callback method gets the
-                            // result of the request.
-                            return@postDelayed
-                        }
-                    }
                     textureView = previewView.textureView
                     texture = textureView.surfaceTexture
                     if (textureView.isAvailable) {
                         logOutput("start", "ready to start camera2")
                         manager.openCamera(camIDs[cameraFacing], this, handler)
                     }
-                    context = context.applicationContext
                 } catch (e: CameraAccessException) {
                     e.printStackTrace()
                 }
@@ -496,7 +436,7 @@ class Cam2 internal constructor(private var context: Context) : ICameraControl<B
             e.printStackTrace()
         }
         exe.shutdown()
-        exe = Executors.newSingleThreadScheduledExecutor(this)
+        exe = Executors.newSingleThreadScheduledExecutor()
         exe.scheduleAtFixedRate(
                 this::checkAlive,
                 hardwareDelay * 2.toLong(),
