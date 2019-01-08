@@ -1,12 +1,11 @@
 package net.vicp.biggee.zsp.feature
 
-
-//import androidx.appcompat.app.AppCompatActivity
-//import androidx.core.app.ActivityCompat
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.content.Context
-import android.graphics.*
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.SurfaceTexture
 import android.hardware.camera2.*
 import android.media.ImageReader
 import android.os.Build
@@ -17,18 +16,17 @@ import android.util.SparseIntArray
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
-import cn.mclover.util.ImageConvert
 import com.baidu.aip.face.PreviewView
 import com.baidu.aip.face.camera.ICameraControl
 import com.baidu.aip.face.camera.PermissionCallback
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import kotlin.math.max
 import kotlin.math.min
 
 @TargetApi(Build.VERSION_CODES.N)
-class Cam2 internal constructor(val context: Context) : ICameraControl<Bitmap>, CameraDevice.StateCallback(),
-        TextureView.SurfaceTextureListener, ICameraControl.OnTakePictureCallback, ImageReader.OnImageAvailableListener {
+class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray>, CameraDevice.StateCallback(),
+        TextureView.SurfaceTextureListener, ICameraControl.OnTakePictureCallback, ImageReader.OnImageAvailableListener, ThreadFactory, RejectedExecutionHandler {
+
     private var cameraFacing: Int = ICameraControl.CAMERA_FACING_FRONT
     private var width = 720
     private var height = 1280
@@ -58,6 +56,26 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<Bitmap>, 
     var sdkOk: Boolean = false
     private var backgroundThread: HandlerThread? = null
     private var handler: Handler? = null
+    val frameQueue: LinkedBlockingQueue<Runnable> by lazy { LinkedBlockingQueue<Runnable>(FPS) }
+    private val framePool: ThreadPoolExecutor by lazy {
+        ThreadPoolExecutor(
+                1,
+                MainActivity.CPUCORES / 4,
+                (hardwareDelay / FPS).toLong() * 2,
+                TimeUnit.MILLISECONDS,
+                frameQueue,
+                this,
+                this
+        ).apply {
+            allowCoreThreadTimeOut(true)
+        }
+    }
+    private val frameGroup: ThreadGroup by lazy {
+        ThreadGroup("frameGroup${System.currentTimeMillis()}").apply {
+            isDaemon = true
+            maxPriority = Thread.MAX_PRIORITY - 2
+        }
+    }
 
     companion object {
         const val FPS = 30
@@ -79,29 +97,38 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<Bitmap>, 
         }
     }
 
-    init {
-        ImageConvert()
+    /**
+     * Method that may be invoked by a [ThreadPoolExecutor] when
+     * [execute][ThreadPoolExecutor.execute] cannot accept a
+     * task.  This may occur when no more threads or queue slots are
+     * available because their bounds would be exceeded, or upon
+     * shutdown of the Executor.
+     *
+     *
+     * In the absence of other alternatives, the method may throw
+     * an unchecked [RejectedExecutionException], which will be
+     * propagated to the caller of `execute`.
+     *
+     * @param r the runnable task requested to be executed
+     * @param executor the executor attempting to execute this task
+     * @throws RejectedExecutionException if there is no remedy
+     */
+    override fun rejectedExecution(r: Runnable?, executor: ThreadPoolExecutor?) {
+        frameQueue.clear()
     }
 
     /**
-     * 选择变换
+     * Constructs a new `Thread`.  Implementations may also initialize
+     * priority, name, daemon status, `ThreadGroup`, etc.
      *
-     * @param origin 原图
-     * @param alpha  旋转角度，可正可负
-     * @return 旋转后的图片
+     * @param r a runnable to be executed by new thread instance
+     * @return constructed thread, or `null` if the request to
+     * create a thread is rejected
      */
-    private fun rotateBitmap(origin: Bitmap, alpha: Float): Bitmap {
-        val width = origin.width
-        val height = origin.height
-        val matrix = Matrix()
-        matrix.setRotate(alpha)
-        // 围绕原地进行旋转
-        val newBM = Bitmap.createBitmap(origin, 0, 0, width, height, matrix, false)
-        if (newBM == origin) {
-            return newBM
+    override fun newThread(r: Runnable?): Thread {
+        return Thread(frameGroup, r, "frame${System.currentTimeMillis()}", 0).apply {
+            priority = Thread.NORM_PRIORITY
         }
-        origin.recycle()
-        return newBM
     }
 
     /**
@@ -119,7 +146,7 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<Bitmap>, 
         backgroundThread?.quitSafely()
         try {
             backgroundThread?.join()
-            handler?.removeCallbacks(null)
+            handler?.removeCallbacksAndMessages(null)
         } catch (e: InterruptedException) {
             e.printStackTrace()
         }
@@ -140,45 +167,92 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<Bitmap>, 
      */
     override fun onImageAvailable(reader: ImageReader?) {
         timestart = System.currentTimeMillis()
-        try {
-            val image = reader?.acquireLatestImage() ?: return
-            val plane = image.planes
-            val mYUVBytes = arrayOfNulls<ByteArray>(plane.size)
+        framePool.execute {
+            try {
+                val image = reader?.acquireLatestImage() ?: return@execute
 
-            for (i in mYUVBytes.indices) mYUVBytes[i] = ByteArray(plane[i].buffer.capacity())
+                //获取源数据，如果是YUV格式的数据planes.length = 3
+                //plane[i]里面的实际数据可能存在byte[].length <= capacity (缓冲区总大小)
+                val planes = image.planes
 
-            val mRGBBytes = IntArray(width * height)
+                //数据有效宽度，一般的，图片width <= rowStride，这也是导致byte[].length <= capacity的原因
+                // 所以我们只取width部分
+                val width = image.width
+                val height = image.height
 
-            for (i in plane.indices) plane[i].buffer.get(mYUVBytes[i])
-            val yRowStride = plane[0].rowStride
-            val uvRowStride = plane[1].rowStride
-            val uvPixelStride = plane[1].pixelStride
+                //此处用来装填最终的YUV数据，需要1.5倍的图片大小，因为Y U V 比例为 4:1:1
+                val yuvBytes = ByteArray((width * height * 1.5).toInt())
+                //目标数组的装填到的位置
+                var dstIndex = 0
 
-            ImageConvert.convertYUV420ToARGB8888(
-                    mYUVBytes[0],
-                    mYUVBytes[1],
-                    mYUVBytes[2],
-                    mRGBBytes,
-                    image.width,
-                    image.height,
-                    yRowStride,
-                    uvRowStride,
-                    uvPixelStride,
-                    false)
+                //临时存储uv数据的
+//            val uBytes = ByteArray(width * height / 4)
+//            val vBytes = ByteArray(width * height / 4)
+//            var uIndex = 0
+//            var vIndex = 0
 
-            val mRGBframeBitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-            mRGBframeBitmap.setPixels(mRGBBytes, 0, image.width, 0, 0, image.width, image.height)
+                var pixelsStride: Int
+                var rowStride: Int
+                for (i in planes.indices) {
+                    var index = 0
 
-            image.close()
+                    pixelsStride = planes[i].pixelStride
+                    rowStride = planes[i].rowStride
 
-            if (sdkOk && !stoped) {
-                val bmp = rotateBitmap(mRGBframeBitmap, 270f)
-                Thread.currentThread().priority = Thread.NORM_PRIORITY + 1
-                listener.onPreviewFrame(bmp, 0, bmp.width, bmp.height)
-                bmp.recycle()
+                    val buffer = planes[i].buffer
+
+                    //如果pixelsStride==2，一般的Y的buffer长度=640*480，UV的长度=640*480/2-1
+                    //源数据的索引，y的数据是byte中连续的，u的数据是v向左移以为生成的，两者都是偶数位为有效数据
+                    val bytes = ByteArray(buffer.capacity())
+                    buffer.get(bytes)
+
+                    var srcIndex = 0
+                    if (i == 0) {
+                        //直接取出来所有Y的有效区域，也可以存储成一个临时的bytes，到下一步再copy
+                        for (j in 0 until height) {
+                            System.arraycopy(bytes, srcIndex, yuvBytes, dstIndex, width)
+                            srcIndex += rowStride
+                            dstIndex += width
+                        }
+                    } else if (i == 1) {
+                        //根据pixelsStride取相应的数据
+                        for (j in 0 until height / 2) {
+                            for (k in 0 until width / 2) {
+                                yuvBytes[dstIndex + 1 + 2 * index++] = bytes[srcIndex]
+                                srcIndex += pixelsStride
+                            }
+                            if (pixelsStride == 2) {
+                                srcIndex += rowStride - width
+                            } else if (pixelsStride == 1) {
+                                srcIndex += rowStride - width / 2
+                            }
+                        }
+                    } else if (i == 2) {
+                        //根据pixelsStride取相应的数据
+                        for (j in 0 until height / 2) {
+                            for (k in 0 until width / 2) {
+                                yuvBytes[dstIndex + 2 * index++] = bytes[srcIndex]
+                                srcIndex += pixelsStride
+                            }
+                            if (pixelsStride == 2) {
+                                srcIndex += rowStride - width
+                            } else if (pixelsStride == 1) {
+                                srcIndex += rowStride - width / 2
+                            }
+                        }
+                    }
+                }
+
+                image.close()
+
+                if (sdkOk && !stoped) {
+                    listener.onPreviewFrame(yuvBytes, 270, width, height)
+                }
+
+                data = yuvBytes
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
@@ -195,7 +269,7 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<Bitmap>, 
     override fun onOpened(camera: CameraDevice) {
         this.camera = camera
         try {
-            imageReader = ImageReader.newInstance(max(width, height), min(width, height), ImageFormat.YUV_420_888, 2)
+            imageReader = ImageReader.newInstance(max(width, height), min(width, height), ImageFormat.YUV_420_888, FPS)
 
             var width = this.width
             var height = this.height

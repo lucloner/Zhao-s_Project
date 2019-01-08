@@ -41,14 +41,12 @@ import com.tapadoo.alerter.Alerter
 import net.vicp.biggee.zsp.R
 import java.io.File
 import java.util.*
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import kotlin.collections.HashSet
 import kotlin.math.min
 
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
-        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener {
+        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener, ThreadFactory, RejectedExecutionHandler {
 
     // 用于检测人脸。
     private val faceDetectManager: FaceDetectManager by lazy { FaceDetectManager(applicationContext) }
@@ -74,7 +72,26 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private var wait = false
     private var txtName: EditText? = null
     private var showFace = false
-    private val facePool = Handler()
+    private val recogQueue: LinkedBlockingQueue<Runnable> by lazy { LinkedBlockingQueue<Runnable>(CPUCORES) }
+    private val recogPool: ThreadPoolExecutor by lazy {
+        ThreadPoolExecutor(
+                1,
+                CPUCORES / 2,
+                1,
+                TimeUnit.SECONDS,
+                recogQueue,
+                this,
+                this
+        ).apply {
+            allowCoreThreadTimeOut(true)
+        }
+    }
+    private val recogGroup: ThreadGroup by lazy {
+        ThreadGroup("recogGroup${System.currentTimeMillis()}").apply {
+            isDaemon = true
+            maxPriority = Thread.MAX_PRIORITY - 1
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -154,6 +171,43 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
 
         //cameraImageSource.start()
+    }
+
+    /**
+     * Method that may be invoked by a [ThreadPoolExecutor] when
+     * [execute][ThreadPoolExecutor.execute] cannot accept a
+     * task.  This may occur when no more threads or queue slots are
+     * available because their bounds would be exceeded, or upon
+     * shutdown of the Executor.
+     *
+     *
+     * In the absence of other alternatives, the method may throw
+     * an unchecked [RejectedExecutionException], which will be
+     * propagated to the caller of `execute`.
+     *
+     * @param r the runnable task requested to be executed
+     * @param executor the executor attempting to execute this task
+     * @throws RejectedExecutionException if there is no remedy
+     */
+    override fun rejectedExecution(r: Runnable?, executor: ThreadPoolExecutor?) {
+        recogQueue.clear()
+        if (identityStatus == IDENTITY_IDLE) {
+            executor?.execute(r)
+        }
+    }
+
+    /**
+     * Constructs a new `Thread`.  Implementations may also initialize
+     * priority, name, daemon status, `ThreadGroup`, etc.
+     *
+     * @param r a runnable to be executed by new thread instance
+     * @return constructed thread, or `null` if the request to
+     * create a thread is rejected
+     */
+    override fun newThread(r: Runnable?): Thread {
+        return Thread(recogGroup, r, "recog${System.currentTimeMillis()}", 0).apply {
+            priority = Thread.NORM_PRIORITY
+        }
     }
 
     /**
@@ -407,102 +461,105 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             return
         }
 
-        facePool.post {
-            if (infos.isEmpty()) {
-                return@post
-            }
-
-            Cam2.logOutput("$logtag oD", "Detected!")
-            val txt = StringBuilder()
-            Thread.currentThread().priority = Thread.MAX_PRIORITY - 3
-            val rgbScore = FaceLiveness.getInstance().rgbLiveness(
-                    imageFrame.argb, imageFrame
-                    .width, imageFrame.height, infos[0].landmarks
-            )
-            txt.append("RGB活体耗时：${System.currentTimeMillis() - timeStamp}ms \t")
-            txt.append("RGB活体得分：$rgbScore \n")
-
-            if (rgbScore <= FaceEnvironment.LIVENESS_RGB_THRESHOLD) {
-                txt.append("活体检测分数过低: $rgbScore")
-                toast(txt.toString())
-                return@post
-            }
-
-            val raw = Math.abs(infos[0].headPose[0])
-            val patch = Math.abs(infos[0].headPose[1])
-            val roll = Math.abs(infos[0].headPose[2])
-            // 人脸的三个角度大于20不进行识别
-            if (raw > 20 || patch > 20 || roll > 20) {
-                txt.append("角度大于20度,请正视屏幕: ($raw,$patch,$roll) ")
-                toast(txt.toString())
-                return@post
-            }
-
-            val argb = imageFrame.argb
-            val rows = imageFrame.height
-            val cols = imageFrame.width
-            val landmarks = infos[0].landmarks
-            facePool.post {
+        recogPool.execute {
+            try {
                 identityStatus = IDENTITYING
-                try {
-                    Thread.currentThread().priority = Thread.MAX_PRIORITY - 2
+                val txt = StringBuilder()
 
-                    val identifyRet = FaceApi.getInstance().identity(argb, rows, cols, landmarks, groupId)
-                    val score = identifyRet.score
-                    val userId = identifyRet.userId
+                if (infos.isEmpty()) {
+                    throw Exception(txt.toString())
+                }
 
-                    if (score < 80) {
-                        txt.append("比对得分太低: $score \t")
-                        txt.append("最近似的结果为: ${identifyRet.userId} ")
-                        displaytxt(txt.toString())
-                        throw Exception(txt.toString())
-                    }
+                Cam2.logOutput("$logtag oD", "Detected!")
 
-                    facePool.removeCallbacksAndMessages(null)
+                Thread.currentThread().priority = Thread.MAX_PRIORITY - 3
+                val rgbScore = FaceLiveness.getInstance().rgbLiveness(
+                        imageFrame.argb, imageFrame
+                        .width, imageFrame.height, infos[0].landmarks
+                )
+                txt.append("RGB活体耗时：${System.currentTimeMillis() - timeStamp}ms \t")
+                txt.append("RGB活体得分：$rgbScore \n")
 
-                    unknownFace = null
+                if (rgbScore <= FaceEnvironment.LIVENESS_RGB_THRESHOLD) {
+                    txt.append("活体检测分数过低: $rgbScore")
+                    toast(txt.toString())
+                    throw Exception(txt.toString())
+                }
 
-                    if (userIdOfMaxScore == userId) {
-                        if (score < maxScore) {
-                            txt.append(sampletext.text)
-                            txt.append("↓")
-                        } else {
-                            maxScore = score
-                            txt.append("userId: $userId \tscore: $score↑")
-                        }
-                        displaytxt(txt.toString())
-                        throw Exception(txt.toString())
-                    } else {
-                        userIdOfMaxScore = userId
-                        maxScore = score
-                    }
+                val raw = Math.abs(infos[0].headPose[0])
+                val patch = Math.abs(infos[0].headPose[1])
+                val roll = Math.abs(infos[0].headPose[2])
+                // 人脸的三个角度大于20不进行识别
+                if (raw > 20 || patch > 20 || roll > 20) {
+                    txt.append("角度大于20度,请正视屏幕: ($raw,$patch,$roll) ")
+                    toast(txt.toString())
+                    throw Exception(txt.toString())
+                }
 
-                    txt.append("userId:$userId \tscore: $score \t")
+                val argb = imageFrame.argb
+                val rows = imageFrame.height
+                val cols = imageFrame.width
+                val landmarks = infos[0].landmarks
 
-                    val user = FaceApi.getInstance().getUserInfo(groupId, userId)
-                            ?: throw Exception(txt.toString())
+                Thread.currentThread().priority = Thread.MAX_PRIORITY - 2
 
-                    txt.append("名字: ${user.userInfo} \n")
-                    try {
-                        showFace(getRegedFace(user.featureList[0]!!.imageName)!!, user.userInfo)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                val identifyRet = FaceApi.getInstance().identity(argb, rows, cols, landmarks, groupId)
+                val score = identifyRet.score
+                val userId = identifyRet.userId
 
-                    val timeidle = System.currentTimeMillis()
-                    txt.append("特征抽取对比耗时: ${timeidle - timeStamp} \t")
-
-                    val t = min(this.timeidle, cameraControl.timestart)
-                    txt.append("最长可能时间: ${timeidle - t}")
-
+                if (score < 80) {
+                    txt.append("比对得分太低: $score \t")
+                    txt.append("最近似的结果为: ${identifyRet.userId} ")
                     displaytxt(txt.toString())
+                    throw Exception(txt.toString())
+                }
 
-                    this.timeidle = timeidle
+                recogQueue.clear()
+
+                unknownFace = null
+
+                if (userIdOfMaxScore == userId) {
+                    if (score < maxScore) {
+                        txt.append(sampletext.text)
+                        txt.append("↓")
+                    } else {
+                        maxScore = score
+                        txt.append("userId: $userId \tscore: $score↑")
+                    }
+                    displaytxt(txt.toString())
+                    throw Exception(txt.toString())
+                } else {
+                    userIdOfMaxScore = userId
+                    maxScore = score
+                }
+
+                txt.append("userId:$userId \tscore: $score \t")
+
+                val user = FaceApi.getInstance().getUserInfo(groupId, userId)
+                        ?: throw Exception(txt.toString())
+
+                txt.append("名字: ${user.userInfo} \n")
+                try {
+                    showFace(getRegedFace(user.featureList[0]!!.imageName)!!, user.userInfo)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-                identityStatus = IDENTITY_IDLE
+
+                val timeidle = System.currentTimeMillis()
+                txt.append("特征抽取对比耗时: ${timeidle - timeStamp} \t")
+
+                val t = min(min(this.timeidle, cameraControl.timestart), Thread.currentThread().name.substring(5).toLong())
+                txt.append("最长可能时间: ${timeidle - t}")
+
+                displaytxt(txt.toString())
+
+                this.timeidle = timeidle
+
+                cameraControl.frameQueue.clear()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
+            identityStatus = IDENTITY_IDLE
         }
     }
 
@@ -571,7 +628,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         super.onDestroy()
         faceDetectManager.imageSource?.stop()
         faceDetectManager.stop()
-        facePool.removeCallbacksAndMessages(null)
+        recogPool.shutdown()
         es.shutdown()
     }
 

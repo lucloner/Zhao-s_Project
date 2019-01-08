@@ -1,19 +1,18 @@
 package net.vicp.biggee.zsp.feature
 
-
 import android.content.Context
-import android.graphics.Bitmap
 import com.baidu.aip.ImageFrame
 import com.baidu.aip.face.ArgbPool
 import com.baidu.aip.face.ImageSource
 import com.baidu.aip.face.PreviewView
 import com.baidu.aip.face.camera.ICameraControl
+import com.baidu.aip.manager.FaceDetector
 
-class Cam2ImgSrc(context: Context) : ImageSource(), ICameraControl.OnFrameListener<Bitmap> {
+class Cam2ImgSrc(context: Context) : ImageSource(), ICameraControl.OnFrameListener<ByteArray> {
     /**
      * 相机控制类
      */
-    val cameraControl: ICameraControl<Bitmap>
+    val cameraControl: ICameraControl<ByteArray>
     private val argbPool = ArgbPool()
     private var cameraFaceType = ICameraControl.CAMERA_FACING_FRONT
 
@@ -27,7 +26,7 @@ class Cam2ImgSrc(context: Context) : ImageSource(), ICameraControl.OnFrameListen
         private const val logtag = "Z's P-C2IS-"
     }
 
-    override fun onPreviewFrame(data: Bitmap, rotation: Int, width: Int, height: Int) {
+    override fun onPreviewFrame(data: ByteArray, rotation: Int, width: Int, height: Int) {
         //Cam2.logOutput(logtag+"oPF",data.byteCount.toString())
         var w = width
         var h = height
@@ -41,7 +40,7 @@ class Cam2ImgSrc(context: Context) : ImageSource(), ICameraControl.OnFrameListen
         val r = if (rotation < 0) 360 + rotation else rotation
 //            val starttime = System.currentTimeMillis()
 
-        data.getPixels(argb, 0, w, 0, 0, w, h)
+        FaceDetector.yuvToARGB(data, width, height, argb, rotation, 0)
 
         // 旋转了90或270度。高宽需要替换
         if (r % 180 == 90) {
