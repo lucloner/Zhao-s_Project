@@ -247,12 +247,11 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray
                 }
 
                 image.close()
+                data = yuvBytes
 
                 if (sdkOk && !stoped) {
-                    listener.onPreviewFrame(yuvBytes, 270, width, height)
+                    listener.onPreviewFrame(yuvBytes.clone(), displayOrientation + 180, width, height)
                 }
-
-                data = yuvBytes
             } catch (e: Exception) {
                 e.printStackTrace()
             }
