@@ -134,7 +134,11 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray
      * Starts a background thread and its [Handler].
      */
     private fun startBackgroundThread() {
-        backgroundThread = HandlerThread("CameraBackground").also { it.start() }
+        backgroundThread = HandlerThread("CameraBackground").apply {
+            isDaemon = true
+        }.also {
+            it.start()
+        }
         handler = Handler(backgroundThread!!.looper)
     }
 
@@ -635,7 +639,12 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray
 
         override fun onCaptureStarted(session: CameraCaptureSession?, request: CaptureRequest?, timestamp: Long, frameNumber: Long) {
             if (imageReader.surface == null || previewView.textureView.surfaceTexture == null) {
-                checkAlive()
+                handler?.postAtFrontOfQueue {
+                    Handler().post {
+                        pause()
+                        start()
+                    }
+                }
                 return
             }
             super.onCaptureStarted(session, request, timestamp, frameNumber)
