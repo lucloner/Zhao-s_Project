@@ -70,12 +70,6 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray
             allowCoreThreadTimeOut(true)
         }
     }
-    private val frameGroup: ThreadGroup by lazy {
-        ThreadGroup("frameGroup${System.currentTimeMillis()}").apply {
-            isDaemon = true
-            maxPriority = Thread.MAX_PRIORITY - 2
-        }
-    }
 
     companion object {
         const val FPS = 30
@@ -126,7 +120,12 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray
      * create a thread is rejected
      */
     override fun newThread(r: Runnable?): Thread {
-        return Thread(frameGroup, r, "frame${System.currentTimeMillis()}", 0).apply {
+        return Thread(
+                null,
+                r,
+                "frame${System.currentTimeMillis()}",
+                0
+        ).apply {
             priority = Thread.NORM_PRIORITY
         }
     }

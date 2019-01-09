@@ -86,12 +86,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             allowCoreThreadTimeOut(true)
         }
     }
-    private val recogGroup: ThreadGroup by lazy {
-        ThreadGroup("recogGroup${System.currentTimeMillis()}").apply {
-            isDaemon = true
-            maxPriority = Thread.MAX_PRIORITY - 1
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -205,7 +199,12 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * create a thread is rejected
      */
     override fun newThread(r: Runnable?): Thread {
-        return Thread(recogGroup, r, "recog${System.currentTimeMillis()}", 0).apply {
+        return Thread(
+                null,
+                r,
+                "recog${System.currentTimeMillis()}",
+                0
+        ).apply {
             priority = Thread.NORM_PRIORITY
         }
     }
@@ -462,8 +461,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         }
 
         recogPool.execute {
+            identityStatus = IDENTITYING
             try {
-                identityStatus = IDENTITYING
                 val txt = StringBuilder()
 
                 if (infos.isEmpty()) {
@@ -548,8 +547,12 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 val timeidle = System.currentTimeMillis()
                 txt.append("特征抽取对比耗时: ${timeidle - timeStamp} \t")
 
-                val t = min(min(this.timeidle, cameraControl.timestart), Thread.currentThread().name.substring(5).toLong())
-                txt.append("最长可能时间: ${timeidle - t}")
+                try {
+                    val t = min(min(this.timeidle, cameraControl.timestart), Thread.currentThread().name.substring(5).toLong())
+                    txt.append("最长可能时间: ${timeidle - t}")
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
 
                 displaytxt(txt.toString())
 
