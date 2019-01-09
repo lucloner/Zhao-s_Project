@@ -57,10 +57,10 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray
     private var backgroundThread: HandlerThread? = null
     private var handler: Handler? = null
     val frameQueue: LinkedBlockingQueue<Runnable> by lazy { LinkedBlockingQueue<Runnable>(FPS) }
-    private val framePool: ThreadPoolExecutor by lazy {
+    val framePool: ThreadPoolExecutor by lazy {
         ThreadPoolExecutor(
                 1,
-                MainActivity.CPUCORES / 4,
+                MainActivity.CPUCORES / 2,
                 (hardwareDelay / FPS).toLong() * 2,
                 TimeUnit.MILLISECONDS,
                 frameQueue,

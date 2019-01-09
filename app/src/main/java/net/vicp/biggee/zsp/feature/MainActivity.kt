@@ -76,7 +76,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private val recogPool: ThreadPoolExecutor by lazy {
         ThreadPoolExecutor(
                 1,
-                CPUCORES / 2,
+                CPUCORES,
                 1,
                 TimeUnit.SECONDS,
                 recogQueue,
@@ -184,7 +184,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * @throws RejectedExecutionException if there is no remedy
      */
     override fun rejectedExecution(r: Runnable?, executor: ThreadPoolExecutor?) {
-        recogQueue.clear()
+        recogQueue.remove()
         if (identityStatus == IDENTITY_IDLE) {
             executor?.execute(r)
         }
@@ -513,7 +513,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                     throw Exception(txt.toString())
                 }
 
-                recogQueue.clear()
+                recogPool.purge()
 
                 unknownFace = null
 
@@ -558,7 +558,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
 
                 this.timeidle = timeidle
 
-                cameraControl.frameQueue.clear()
+                cameraControl.framePool.purge()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
