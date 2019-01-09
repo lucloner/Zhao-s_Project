@@ -46,7 +46,7 @@ import kotlin.collections.HashSet
 import kotlin.math.min
 
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
-        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener, ThreadFactory, RejectedExecutionHandler {
+        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener, ThreadFactory {
 
     // 用于检测人脸。
     private val faceDetectManager: FaceDetectManager by lazy { FaceDetectManager(applicationContext) }
@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 TimeUnit.SECONDS,
                 recogQueue,
                 this,
-                this
+                ThreadPoolExecutor.CallerRunsPolicy()
         ).apply {
             allowCoreThreadTimeOut(true)
         }
@@ -168,29 +168,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     }
 
     /**
-     * Method that may be invoked by a [ThreadPoolExecutor] when
-     * [execute][ThreadPoolExecutor.execute] cannot accept a
-     * task.  This may occur when no more threads or queue slots are
-     * available because their bounds would be exceeded, or upon
-     * shutdown of the Executor.
-     *
-     *
-     * In the absence of other alternatives, the method may throw
-     * an unchecked [RejectedExecutionException], which will be
-     * propagated to the caller of `execute`.
-     *
-     * @param r the runnable task requested to be executed
-     * @param executor the executor attempting to execute this task
-     * @throws RejectedExecutionException if there is no remedy
-     */
-    override fun rejectedExecution(r: Runnable?, executor: ThreadPoolExecutor?) {
-        recogQueue.remove()
-        if (identityStatus == IDENTITY_IDLE) {
-            executor?.execute(r)
-        }
-    }
-
-    /**
      * Constructs a new `Thread`.  Implementations may also initialize
      * priority, name, daemon status, `ThreadGroup`, etc.
      *
@@ -198,7 +175,10 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * @return constructed thread, or `null` if the request to
      * create a thread is rejected
      */
-    override fun newThread(r: Runnable?): Thread {
+    override fun newThread(r: Runnable?): Thread? {
+        if (recogPool.corePoolSize == recogPool.maximumPoolSize && recogQueue.remainingCapacity() == 0) {
+            return null
+        }
         return Thread(
                 null,
                 r,

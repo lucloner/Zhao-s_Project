@@ -25,7 +25,7 @@ import kotlin.math.min
 
 @TargetApi(Build.VERSION_CODES.N)
 class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray>, CameraDevice.StateCallback(),
-        TextureView.SurfaceTextureListener, ICameraControl.OnTakePictureCallback, ImageReader.OnImageAvailableListener, ThreadFactory, RejectedExecutionHandler {
+        TextureView.SurfaceTextureListener, ICameraControl.OnTakePictureCallback, ImageReader.OnImageAvailableListener, ThreadFactory {
 
     private var cameraFacing: Int = ICameraControl.CAMERA_FACING_FRONT
     private var width = 720
@@ -60,15 +60,13 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray
     val framePool: ThreadPoolExecutor by lazy {
         ThreadPoolExecutor(
                 1,
-                MainActivity.CPUCORES / 2,
-                (hardwareDelay / FPS).toLong() * 2,
-                TimeUnit.MILLISECONDS,
+                1,
+                1,
+                TimeUnit.SECONDS,
                 frameQueue,
                 this,
-                this
-        ).apply {
-            allowCoreThreadTimeOut(true)
-        }
+                ThreadPoolExecutor.DiscardOldestPolicy()
+        )
     }
 
     companion object {
@@ -89,26 +87,6 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray
         fun logOutput(who: String, what: String) {
             Log.v(logtag + who, what)
         }
-    }
-
-    /**
-     * Method that may be invoked by a [ThreadPoolExecutor] when
-     * [execute][ThreadPoolExecutor.execute] cannot accept a
-     * task.  This may occur when no more threads or queue slots are
-     * available because their bounds would be exceeded, or upon
-     * shutdown of the Executor.
-     *
-     *
-     * In the absence of other alternatives, the method may throw
-     * an unchecked [RejectedExecutionException], which will be
-     * propagated to the caller of `execute`.
-     *
-     * @param r the runnable task requested to be executed
-     * @param executor the executor attempting to execute this task
-     * @throws RejectedExecutionException if there is no remedy
-     */
-    override fun rejectedExecution(r: Runnable?, executor: ThreadPoolExecutor?) {
-        frameQueue.clear()
     }
 
     /**
