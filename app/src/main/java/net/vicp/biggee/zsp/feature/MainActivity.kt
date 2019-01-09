@@ -11,10 +11,13 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Rect
+import android.graphics.RectF
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AppCompatActivity
 import android.view.MotionEvent
+import android.view.ViewGroup
 import android.widget.*
 import com.baidu.aip.ImageFrame
 import com.baidu.aip.api.FaceApi
@@ -72,6 +75,12 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private var wait = false
     private var txtName: EditText? = null
     private var showFace = false
+    private val originLayout: ViewGroup.LayoutParams by lazy { sampletext.layoutParams }
+    private val screenWidth by lazy { resources.displayMetrics.widthPixels }
+    private val screenHeight by lazy { resources.displayMetrics.heightPixels }
+    private val rate by lazy { (0.75 * screenHeight / screenWidth).toFloat() }
+    private val rateX by lazy { (screenWidth / WIDTH).toFloat() }
+    private val rateY by lazy { (screenHeight / HEIGHT).toFloat() }
     private val recogQueue: LinkedBlockingQueue<Runnable> by lazy { LinkedBlockingQueue<Runnable>(CPUCORES) }
     private val recogPool: ThreadPoolExecutor by lazy {
         ThreadPoolExecutor(
@@ -86,6 +95,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             allowCoreThreadTimeOut(true)
         }
     }
+    private val recogGroup: ThreadGroup by lazy { ThreadGroup("${System.currentTimeMillis()}") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -131,12 +141,12 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         orientation = resources.configuration.orientation
         val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
 
-        var width = 1080
-        var height = 1920
+        var width = WIDTH
+        var height = HEIGHT
 
         if (!isPortrait) {
-            height = 1080
-            width = 1920
+            height = WIDTH
+            width = HEIGHT
         }
 
         cameraImageSource.setPreviewView(previewView)
@@ -154,17 +164,13 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             cameraImageSource.cameraControl.setDisplayOrientation(CameraView.ORIENTATION_HORIZONTAL)
         }
 
-        val dm = resources.displayMetrics
-        val screenWidth = dm.widthPixels
-        val screenHeight = dm.heightPixels
-        val rate: Float = screenWidth / screenHeight.toFloat()
-
-        textureView.scaleY = rate * 4 / 3f
+        textureView.scaleX = rate
 
         cameraImageSource.setCameraFacing(ICameraControl.CAMERA_FACING_FRONT)
 
-
         //cameraImageSource.start()
+
+        Cam2.logOutput(logtag, "$originLayout")
     }
 
     /**
@@ -180,7 +186,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             return null
         }
         return Thread(
-                null,
+                recogGroup,
                 r,
                 "recog${System.currentTimeMillis()}",
                 0
@@ -406,9 +412,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     }
 
     override fun onDetectFace(status: Int, infos: Array<out FaceInfo>?, imageFrame: ImageFrame?) {
-        if (identityStatus != IDENTITY_IDLE) {
-            return
-        }
 
         val timeStamp = System.currentTimeMillis()
         this.timeStamp = timeStamp
@@ -418,22 +421,25 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             return
         }
 
-        if (!showFace) {
-            handler.post {
-                if (timeStamp - timeidle > 5000) {
-                    unknownFace = null
-                }
-                if (identityStatus == IDENTITY_IDLE && System.currentTimeMillis() - timeStamp < 66) {
-                    imageView.setImageBitmap(
-                            unknownFace ?: Bitmap.createBitmap(
-                                    imageFrame.argb,
-                                    imageFrame.width,
-                                    imageFrame.height,
-                                    Bitmap.Config
-                                            .ARGB_8888
-                            ))
-                }
+        handler.post {
+            showFrame(imageFrame, infos)
+
+            if (timeStamp - timeidle > 5000) {
+                unknownFace = null
             }
+            if (identityStatus == IDENTITY_IDLE && !showFace) {
+                imageView.setImageBitmap(
+                        unknownFace ?: Bitmap.createBitmap(
+                                imageFrame.argb,
+                                imageFrame.width,
+                                imageFrame.height,
+                                Bitmap.Config.ARGB_8888
+                        ))
+            }
+        }
+
+        if (identityStatus != IDENTITY_IDLE) {
+            return
         }
 
         if (status != FaceTracker.ErrCode.OK.ordinal || infos == null) {
@@ -460,7 +466,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 txt.append("RGB活体得分：$rgbScore \n")
 
                 if (rgbScore <= FaceEnvironment.LIVENESS_RGB_THRESHOLD) {
-                    txt.append("活体检测分数过低: $rgbScore")
+                    txt.append("活体检测分数过低")
                     toast(txt.toString())
                     throw Exception(txt.toString())
                 }
@@ -620,6 +626,69 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         faceDetectManager.stop()
     }
 
+
+    /**
+     * 绘制人脸框。
+     */
+    fun showFrame(imageFrame: ImageFrame?, faceInfos: Array<out FaceInfo>?) {
+        if (faceInfos == null || faceInfos.size == 0 || imageFrame == null) {
+            sampletext.layoutParams = originLayout
+            sampletext.background = null
+            return
+        }
+        val faceInfo = faceInfos[0]
+        val rectF = RectF()
+        rectF.set(getFaceRect(faceInfo, imageFrame))
+        // 检测图片的坐标和显示的坐标不一样，需要转换。
+        previewView.mapFromOriginalRect(rectF)
+//        Cam2.logOutput(logtag, rectF.toShortString())
+
+        val layoutParams = FrameLayout.LayoutParams(
+                rectF.width().toInt(),
+                rectF.height().toInt()
+        )
+        layoutParams.leftMargin = rectF.left.toInt()
+        layoutParams.topMargin = rectF.top.toInt()
+        sampletext.layoutParams = layoutParams
+        sampletext.background = getDrawable(R.drawable.boarder)
+    }
+
+    /**
+     * 获取人脸框区域。
+     *
+     * @return 人脸框区域
+     */
+    // TODO padding?
+    fun getFaceRect(faceInfo: FaceInfo, frame: ImageFrame): Rect {
+        val rect = Rect()
+        val points = IntArray(8)
+        faceInfo.getRectPoints(points)
+
+        var left = points[2].toFloat()
+        var top = points[3].toFloat()
+        val right = points[6]
+        val bottom = points[7]
+        //随便调节的
+        //TODO:请提供公式
+        val width = (right - left) * rateX * rate
+        val height = (bottom - top) * rateY * rate
+
+        val x = faceInfo.mCenter_x * rateX * rate
+        val y = faceInfo.mCenter_y * rateY * rate
+
+        left = (screenWidth - x) - width / 2
+        top = y - height / 2
+
+//        Cam2.logOutput(logtag + "r", "$left $top $right $bottom ${faceInfo.mCenter_x} ${faceInfo.mCenter_y}")
+
+        rect.top = top.toInt()
+        rect.left = left.toInt()
+        rect.right = (left + width).toInt()
+        rect.bottom = (top + height).toInt()
+
+        return rect
+    }
+
     companion object {
         private const val FEATURE_DATAS_UNREADY = 1
         private const val IDENTITY_IDLE = 2
@@ -628,5 +697,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         const val CPUCORES = 8
         private const val IDLE_DELAY = 60000
         var orientation: Int = 0
+        private const val WIDTH = 1080
+        private const val HEIGHT = 1920
     }
 }
