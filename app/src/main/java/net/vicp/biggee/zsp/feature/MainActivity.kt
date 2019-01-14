@@ -15,6 +15,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Bundle
 import android.os.Handler
+import android.speech.tts.TextToSpeech
 import android.support.v7.app.AppCompatActivity
 import android.view.MotionEvent
 import android.view.ViewGroup
@@ -49,7 +50,7 @@ import kotlin.collections.HashSet
 import kotlin.math.min
 
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
-        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener, ThreadFactory {
+        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener, ThreadFactory, TextToSpeech.OnInitListener {
 
     // 用于检测人脸。
     private val faceDetectManager: FaceDetectManager by lazy { FaceDetectManager(applicationContext) }
@@ -69,6 +70,9 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private lateinit var sampletext: TextView
     private var userIdOfMaxScore = ""
     private var maxScore = 0f
+    private val tts: TextToSpeech by lazy {
+        TextToSpeech(applicationContext, this)
+    }
     @Volatile
     private var unknownFace: Bitmap? = null
     private var faceTOreg: Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
@@ -87,7 +91,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 1,
                 CPUCORES,
                 1,
-                TimeUnit.SECONDS,
+                TimeUnit.MILLISECONDS,
                 recogQueue,
                 this,
                 ThreadPoolExecutor.CallerRunsPolicy()
@@ -171,6 +175,21 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         //cameraImageSource.start()
 
         Cam2.logOutput(logtag, "$originLayout")
+
+        tts.isSpeaking
+    }
+
+    /**
+     * Called to signal the completion of the TextToSpeech engine initialization.
+     *
+     * @param status [TextToSpeech.SUCCESS] or [TextToSpeech.ERROR].
+     */
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            tts.speak("语音系统已连接", TextToSpeech.QUEUE_ADD, null, null)
+        } else {
+            Toast.makeText(this, status.toString(), Toast.LENGTH_LONG).show()
+        }
     }
 
     /**
@@ -182,8 +201,8 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * create a thread is rejected
      */
     override fun newThread(r: Runnable?): Thread? {
-        if (recogPool.corePoolSize == recogPool.maximumPoolSize && recogQueue.remainingCapacity() == 0) {
-            return null
+        if (recogPool.poolSize >= recogPool.maximumPoolSize && recogQueue.remainingCapacity() == 0) {
+            recogQueue.clear()
         }
         return Thread(
                 recogGroup,
@@ -583,6 +602,10 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         showFace = true
         handler.post {
             imageView.setImageBitmap(face)
+            if (tts.isSpeaking) {
+                tts.stop()
+            }
+            tts.speak("识别,$name", TextToSpeech.QUEUE_FLUSH, null, null)
         }
         handler.postDelayed({ showFace = false }, 3000)
     }
@@ -598,6 +621,12 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 .enableVibration(false)
                 .setBackgroundColorInt(R.color.colorPrimary)
                 .show()
+
+        handler.post({
+            if (!tts.isSpeaking) {
+                tts.speak("信息,$s", TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+        })
     }
 
     override fun onResume() {
@@ -693,7 +722,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         private const val FEATURE_DATAS_UNREADY = 1
         private const val IDENTITY_IDLE = 2
         private const val IDENTITYING = 3
-        private const val logtag = "Z's P-MA-"
+        private const val logtag = "MA-"
         const val CPUCORES = 8
         private const val IDLE_DELAY = 60000
         var orientation: Int = 0
