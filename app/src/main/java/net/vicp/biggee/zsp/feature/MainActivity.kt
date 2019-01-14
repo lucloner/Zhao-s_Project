@@ -622,11 +622,9 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
                 .setBackgroundColorInt(R.color.colorPrimary)
                 .show()
 
-        handler.post({
-            if (!tts.isSpeaking) {
-                tts.speak("信息,$s", TextToSpeech.QUEUE_FLUSH, null, null)
-            }
-        })
+        handler.post {
+            tts.speak("信息,$s", TextToSpeech.QUEUE_ADD, null, null)
+        }
     }
 
     override fun onResume() {
