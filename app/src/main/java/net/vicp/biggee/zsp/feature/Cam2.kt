@@ -23,7 +23,7 @@ import java.util.concurrent.*
 import kotlin.math.max
 import kotlin.math.min
 
-@TargetApi(Build.VERSION_CODES.N)
+@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray>, CameraDevice.StateCallback(),
         TextureView.SurfaceTextureListener, ICameraControl.OnTakePictureCallback, ImageReader.OnImageAvailableListener, ThreadFactory {
 

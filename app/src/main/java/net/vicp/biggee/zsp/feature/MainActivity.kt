@@ -13,6 +13,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.graphics.RectF
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.speech.tts.TextToSpeech
@@ -49,8 +50,9 @@ import java.util.concurrent.*
 import kotlin.collections.HashSet
 import kotlin.math.min
 
-class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener, FaceFilter.OnTrackListener,
-        FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener, DialogInterface.OnDismissListener, ThreadFactory, TextToSpeech.OnInitListener {
+class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener,
+        FaceFilter.OnTrackListener, FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener,
+        DialogInterface.OnDismissListener, ThreadFactory, TextToSpeech.OnInitListener {
 
     // 用于检测人脸。
     private val faceDetectManager: FaceDetectManager by lazy { FaceDetectManager(applicationContext) }
@@ -70,8 +72,43 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
     private lateinit var sampletext: TextView
     private var userIdOfMaxScore = ""
     private var maxScore = 0f
+    private var ttsEngine = ""
     private val tts: TextToSpeech by lazy {
-        TextToSpeech(applicationContext, this)
+        val ttsEngines = arrayOf(
+                "com.google.android.tts",
+                "com.samsung.SMT",
+                "com.baidu.duersdk.opensdk",
+                "com.iflytec.tts",
+                "com.iflytec.speechcloud",
+                "com.iflytec.ttsservice"
+        )
+        val ttsName = arrayOf(
+                "谷歌",
+                "三星",
+                "百度度秘",
+                "讯飞",
+                "迅飞云端",
+                "迅飞服务"
+        )
+        var id = 0
+        var packageName: String? = null
+        for (tIndex in ttsEngines.indices) {
+            try {
+                packageManager.getPackageInfo(ttsEngines[tIndex], tIndex)
+                id = tIndex
+                break
+            } catch (e: Exception) {
+                e.printStackTrace()
+                id = -1
+            }
+        }
+        if (id < 0) {
+            ttsEngine = "默认"
+        } else {
+            ttsEngine = ttsName[id]
+            packageName = ttsEngines[id]
+        }
+        TextToSpeech(applicationContext, this, packageName)
     }
     @Volatile
     private var unknownFace: Bitmap? = null
@@ -109,26 +146,27 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         sampletext = findViewById(R.id.sample_text)
         imageView = findViewById(R.id.zspimageView)
 
-        // Here, thisActivity is the current activity
-        if (this.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            // Should we show an explanation?
-            if (this.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)
-            ) {
-                // Show an expanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-            } else {
-                // No explanation needed, we can request the permission.
-                this.requestPermissions(
-                        arrayOf(Manifest.permission.CAMERA),
-                        Cam2.REQUEST_CAMERA_PERMISSION
-                )
-                // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
-                // app-defined int constant. The callback method gets the
-                // result of the request.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Here, thisActivity is the current activity
+            if (this.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                // Should we show an explanation?
+                if (this.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)
+                ) {
+                    // Show an expanation to the user *asynchronously* -- don't block
+                    // this thread waiting for the user's response! After the user
+                    // sees the explanation, try again to request the permission.
+                } else {
+                    // No explanation needed, we can request the permission.
+                    this.requestPermissions(
+                            arrayOf(Manifest.permission.CAMERA),
+                            Cam2.REQUEST_CAMERA_PERMISSION
+                    )
+                    // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+                    // app-defined int constant. The callback method gets the
+                    // result of the request.
+                }
             }
         }
-
         try {
             PreferencesUtil.initPrefs(applicationContext)
             // 使用人脸1：n时使用
@@ -139,7 +177,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         } catch (e: Exception) {
             e.printStackTrace()
         }
-
 
         toast("程序已经打开")
         orientation = resources.configuration.orientation
@@ -186,7 +223,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      */
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            tts.speak("语音系统已连接", TextToSpeech.QUEUE_ADD, null, null)
+            tts.speak("$ttsEngine 语音系统已连接", TextToSpeech.QUEUE_ADD, null, null)
         } else {
             Toast.makeText(this, status.toString(), Toast.LENGTH_LONG).show()
         }
