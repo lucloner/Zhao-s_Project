@@ -229,31 +229,35 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * @param e the exception
      */
     override fun uncaughtException(t: Thread?, e: Throwable?) {
-        val sb = StringBuilder()
-        sb.append(t?.name)
-        sb.append(" ")
-        sb.append(e?.message)
-        sb.append("\n")
-        e?.stackTrace?.forEach {
-            sb.append(it.isNativeMethod)
+        try {
+            val sb = StringBuilder()
+            sb.append(t?.name)
             sb.append(" ")
-            sb.append(it.fileName)
-            sb.append(" ")
-            sb.append(it.className)
-            sb.append(" ")
-            sb.append(it.methodName)
-            sb.append(" ")
-            sb.append(it.lineNumber)
+            sb.append(e?.message)
             sb.append("\n")
-        }
-        AlertDialog.Builder(this).apply {
-            title = "严重错误!"
-            setMessage(sb.toString())
-            setPositiveButton("知道了") { dialogInterface: DialogInterface, i: Int ->
-                dialogInterface.dismiss()
+            e?.stackTrace?.forEach {
+                sb.append(it.isNativeMethod)
+                sb.append(" ")
+                sb.append(it.fileName)
+                sb.append(" ")
+                sb.append(it.className)
+                sb.append(" ")
+                sb.append(it.methodName)
+                sb.append(" ")
+                sb.append(it.lineNumber)
+                sb.append("\n")
             }
-            show()
-            tts.speak(title, TextToSpeech.QUEUE_FLUSH, null, null)
+            AlertDialog.Builder(this).apply {
+                title = "严重错误!"
+                setMessage(sb.toString())
+                setPositiveButton("知道了") { dialogInterface: DialogInterface, _: Int ->
+                    dialogInterface.dismiss()
+                }
+                tts.speak(title, TextToSpeech.QUEUE_FLUSH, null, null)
+                show()
+            }
+        } catch (e: Exception) {
+
         }
     }
 
