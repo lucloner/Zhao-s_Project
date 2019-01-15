@@ -52,7 +52,8 @@ import kotlin.math.min
 
 class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener,
         FaceFilter.OnTrackListener, FaceSDKManager.SdkInitListener, DialogInterface.OnClickListener,
-        DialogInterface.OnDismissListener, ThreadFactory, TextToSpeech.OnInitListener {
+        DialogInterface.OnDismissListener, ThreadFactory, TextToSpeech.OnInitListener,
+        Thread.UncaughtExceptionHandler {
 
     // 用于检测人脸。
     private val faceDetectManager: FaceDetectManager by lazy { FaceDetectManager(applicationContext) }
@@ -136,10 +137,12 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
             allowCoreThreadTimeOut(true)
         }
     }
-    private val recogGroup: ThreadGroup by lazy { ThreadGroup("${System.currentTimeMillis()}") }
+    private val recogGroup = ThreadGroup("${System.currentTimeMillis()}")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Thread.setDefaultUncaughtExceptionHandler(this)
+
         setContentView(R.layout.zsp_activity_main)
 
         val textureView = previewView.textureView
@@ -214,6 +217,44 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         Cam2.logOutput(logtag, "$originLayout")
 
         tts.isSpeaking
+    }
+
+    /**
+     * Method invoked when the given thread terminates due to the
+     * given uncaught exception.
+     *
+     * Any exception thrown by this method will be ignored by the
+     * Java Virtual Machine.
+     * @param t the thread
+     * @param e the exception
+     */
+    override fun uncaughtException(t: Thread?, e: Throwable?) {
+        val sb = StringBuilder()
+        sb.append(t?.name)
+        sb.append(" ")
+        sb.append(e?.message)
+        sb.append("\n")
+        e?.stackTrace?.forEach {
+            sb.append(it.isNativeMethod)
+            sb.append(" ")
+            sb.append(it.fileName)
+            sb.append(" ")
+            sb.append(it.className)
+            sb.append(" ")
+            sb.append(it.methodName)
+            sb.append(" ")
+            sb.append(it.lineNumber)
+            sb.append("\n")
+        }
+        AlertDialog.Builder(this).apply {
+            title = "严重错误!"
+            setMessage(sb.toString())
+            setPositiveButton("知道了") { dialogInterface: DialogInterface, i: Int ->
+                dialogInterface.dismiss()
+            }
+            show()
+            tts.speak(title, TextToSpeech.QUEUE_FLUSH, null, null)
+        }
     }
 
     /**
@@ -722,7 +763,6 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      *
      * @return 人脸框区域
      */
-    // TODO padding?
     fun getFaceRect(faceInfo: FaceInfo): Rect {
         val rect = Rect()
         val points = IntArray(8)
