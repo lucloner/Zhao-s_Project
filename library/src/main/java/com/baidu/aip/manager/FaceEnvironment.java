@@ -5,8 +5,8 @@ package com.baidu.aip.manager;
 
 import com.baidu.idl.facesdk.FaceSDK;
 
-import android.support.annotation.FloatRange;
-import android.support.annotation.IntRange;
+import androidx.annotation.FloatRange;
+import androidx.annotation.IntRange;
 
 /**
  * SDK全局配置信息

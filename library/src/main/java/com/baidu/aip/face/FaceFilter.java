@@ -3,18 +3,19 @@
  */
 package com.baidu.aip.face;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.UUID;
+import android.graphics.Bitmap;
+import android.graphics.Rect;
+import android.util.Log;
+import android.util.SparseArray;
 
 import com.baidu.aip.ImageFrame;
 import com.baidu.idl.facesdk.FaceInfo;
 
-import android.graphics.Bitmap;
-import android.graphics.Rect;
-import android.support.v4.util.Pools;
-import android.util.Log;
-import android.util.SparseArray;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.UUID;
+
+import androidx.core.util.Pools;
 
 /**
  * 过虑器，可用根据条件过虑帧。

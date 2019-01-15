@@ -6,11 +6,12 @@ package com.baidu.aip.face.camera;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Build;
-import android.support.annotation.IntDef;
 import android.util.AttributeSet;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+
+import androidx.annotation.IntDef;
 
 /**
  * 负责，相机的管理。同时提供，裁剪遮罩功能。

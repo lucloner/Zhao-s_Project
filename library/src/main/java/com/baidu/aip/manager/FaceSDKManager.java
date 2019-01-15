@@ -1,13 +1,8 @@
 package com.baidu.aip.manager;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import android.support.annotation.FloatRange;
-import android.support.annotation.IntRange;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -15,9 +10,11 @@ import android.widget.Toast;
 import com.baidu.aip.ui.Activation;
 import com.baidu.aip.utils.FileUitls;
 import com.baidu.aip.utils.PreferencesUtil;
-import com.baidu.idl.facesdk.FaceConfig;
 import com.baidu.idl.facesdk.FaceSDK;
 import com.baidu.idl.license.AndroidLicenser;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class FaceSDKManager {
 
@@ -184,11 +181,11 @@ public class FaceSDKManager {
 
     public interface SdkInitListener {
 
-        public void initStart();
+        void initStart();
 
-        public void initSuccess();
+        void initSuccess();
 
-        public void initFail(int errorCode, String msg);
+        void initFail(int errorCode, String msg);
     }
 
 

@@ -17,10 +17,10 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.speech.tts.TextToSpeech
-import android.support.v7.app.AppCompatActivity
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
 import com.baidu.aip.ImageFrame
 import com.baidu.aip.api.FaceApi
 import com.baidu.aip.db.DBManager
@@ -702,7 +702,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
         }
         val faceInfo = faceInfos[0]
         val rectF = RectF()
-        rectF.set(getFaceRect(faceInfo, imageFrame))
+        rectF.set(getFaceRect(faceInfo))
         // 检测图片的坐标和显示的坐标不一样，需要转换。
         previewView.mapFromOriginalRect(rectF)
 //        Cam2.logOutput(logtag, rectF.toShortString())
@@ -723,7 +723,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * @return 人脸框区域
      */
     // TODO padding?
-    fun getFaceRect(faceInfo: FaceInfo, frame: ImageFrame): Rect {
+    fun getFaceRect(faceInfo: FaceInfo): Rect {
         val rect = Rect()
         val points = IntArray(8)
         faceInfo.getRectPoints(points)

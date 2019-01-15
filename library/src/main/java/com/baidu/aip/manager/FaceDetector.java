@@ -3,19 +3,15 @@
  */
 package com.baidu.aip.manager;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import android.content.Context;
 
 import com.baidu.aip.ImageFrame;
 import com.baidu.idl.facesdk.FaceInfo;
-import com.baidu.idl.facesdk.FaceRecognize;
 import com.baidu.idl.facesdk.FaceSDK;
 import com.baidu.idl.facesdk.FaceTracker;
 
-import android.content.Context;
-import android.support.annotation.FloatRange;
-import android.support.annotation.IntRange;
-import android.util.Log;
+import androidx.annotation.FloatRange;
+import androidx.annotation.IntRange;
 
 public class FaceDetector {
 

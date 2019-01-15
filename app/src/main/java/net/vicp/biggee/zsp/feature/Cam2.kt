@@ -624,6 +624,9 @@ class Cam2 internal constructor(val context: Context) : ICameraControl<ByteArray
                 }
                 return
             }
+            if (session == null || request == null) {
+                return
+            }
             super.onCaptureStarted(session, request, timestamp, frameNumber)
         }
 

@@ -3,11 +3,12 @@
  */
 package com.baidu.aip.face.camera;
 
+import android.graphics.Rect;
+import android.view.View;
+
 import com.baidu.aip.face.PreviewView;
 
-import android.graphics.Rect;
-import android.support.annotation.IntDef;
-import android.view.View;
+import androidx.annotation.IntDef;
 
 /**
  * Android 5.0 相机的API发生很大的变化。些类屏蔽掉了 api的变化。相机的操作和功能，抽象剥离出来。

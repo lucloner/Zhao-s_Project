@@ -3,16 +3,6 @@
  */
 package com.baidu.aip.face.camera;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import com.baidu.aip.face.LogUtil;
-import com.baidu.aip.face.PreviewView;
-
 import android.Manifest;
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -24,14 +14,25 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.support.annotation.RequiresApi;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+
+import com.baidu.aip.face.LogUtil;
+import com.baidu.aip.face.PreviewView;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import androidx.annotation.RequiresApi;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 /**
  * 5.0以下相机API的封装。

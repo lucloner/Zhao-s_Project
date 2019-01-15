@@ -3,20 +3,21 @@
  */
 package com.baidu.aip.face;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-
-import com.baidu.aip.face.camera.Camera2Control;
-import com.baidu.aip.manager.FaceDetector;
-import com.baidu.aip.ImageFrame;
-import com.baidu.aip.face.camera.Camera1Control;
-import com.baidu.aip.face.camera.ICameraControl;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.media.Image;
 import android.os.Build;
-import android.support.annotation.RequiresApi;
+
+import com.baidu.aip.ImageFrame;
+import com.baidu.aip.face.camera.Camera1Control;
+import com.baidu.aip.face.camera.Camera2Control;
+import com.baidu.aip.face.camera.ICameraControl;
+import com.baidu.aip.manager.FaceDetector;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+
+import androidx.annotation.RequiresApi;
 
 /**
  * 封装了系统做机做为输入源。
