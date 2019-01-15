@@ -695,7 +695,7 @@ class MainActivity : AppCompatActivity(), FaceDetectManager.OnFaceDetectListener
      * 绘制人脸框。
      */
     fun showFrame(imageFrame: ImageFrame?, faceInfos: Array<out FaceInfo>?) {
-        if (faceInfos == null || faceInfos.size == 0 || imageFrame == null) {
+        if (faceInfos == null || faceInfos.isEmpty() || imageFrame == null) {
             sampletext.layoutParams = originLayout
             sampletext.background = null
             return
