@@ -17,7 +17,7 @@
         <option name="ALLOW_USER_CONFIGURATION" value="false" />
         <option name="MANIFEST_FILE_RELATIVE_PATH" value="/src/main/AndroidManifest.xml" />
         <option name="RES_FOLDER_RELATIVE_PATH" value="/src/main/res" />
-        <option name="RES_FOLDERS_RELATIVE_PATH" value="file://$MODULE_DIR$/src/main/res" />
+        <option name="RES_FOLDERS_RELATIVE_PATH" value="file://$MODULE_DIR$/src/main/res;file://$MODULE_DIR$/build/generated/res/rs/release;file://$MODULE_DIR$/build/generated/res/resValues/release" />
         <option name="ASSETS_FOLDER_RELATIVE_PATH" value="/src/main/assets" />
       </configuration>
     </facet>
@@ -26,7 +26,7 @@
         <compilerSettings />
         <compilerArguments>
           <option name="destination" value="$MODULE_DIR$/build/tmp/kotlin-classes/release" />
-          <option name="classpath" value="$MODULE_DIR$/../library/build/intermediates/intermediate-jars/release/classes.jar:/home/lucloner/StudioProjects/Zhao-s_Project/library/libs/baidu_license.jar:/home/lucloner/StudioProjects/Zhao-s_Project/library/libs/FaceSDK.jar:/home/lucloner/StudioProjects/Zhao-s_Project/library/libs/online_liantian_3-1-6-3-381_0808.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/appcompat-1.0.0.aar/d43fbfe478801a3a14aa6265addbf668/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/recyclerview-1.0.0.aar/75b831e91ca1c71e62d9f19789c00a6c/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/alerter-4.0.0.aar/2150f452f3ad0feb3e6715848d22cf6f/jars/classes.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk7/1.3.11/4839661cf6ce3c14b65ed7dcf5b9249b44ecca16/kotlin-stdlib-jdk7-1.3.11.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/fragment-1.0.0.aar/2c019f8decaa65516106a908f1756692/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/vectordrawable-animated-1.0.0.aar/c46adbe8254736d4956299b58e1e0d7a/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/legacy-support-core-ui-1.0.0.aar/80da1eb495c97f8748e3f415487b4c22/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/legacy-support-core-utils-1.0.0.aar/3a5e5e02962b9c89447db84a42294926/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/vectordrawable-1.0.0.aar/6be5ef3f3ce13d739cdbaabfa0d848db/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/loader-1.0.0.aar/c31f4eb1f54676572f051955bc1d280d/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/viewpager-1.0.0.aar/7fdff872eaae8d84717a9072dd44bce2/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/coordinatorlayout-1.0.0.aar/3685f0f8bd092ea3cfda70f9369cfffa/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/drawerlayout-1.0.0.aar/1d9e5f59c427902da9493575f388f8b7/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/slidingpanelayout-1.0.0.aar/6c6d1434947af65f3326bb0c20e41f7d/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/customview-1.0.0.aar/69ea9d94f71c6c12668c3605cdee4ed0/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/swiperefreshlayout-1.0.0.aar/da1a00491078a66a8f0e00278d8bae05/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/asynclayoutinflater-1.0.0.aar/44c17c1b941d58c9e2c4783cbf257066/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/core-1.0.0.aar/702e240ba1ba89bdaa838f15a9f3fdc5/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/versionedparcelable-1.0.0.aar/73479d292e89f957b4e721afa9534320/jars/classes.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/androidx.collection/collection/1.0.0/42858b26cafdaa69b6149f45dfc2894007bc2c7a/collection-1.0.0.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/cursoradapter-1.0.0.aar/e3eda6a9645c8cf0f5b233ebbc50d24e/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/lifecycle-runtime-2.0.0.aar/27004b6e06795317d249834c2a5ee7df/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/documentfile-1.0.0.aar/c436ce3fd2613607d99bf7667c2537a5/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/localbroadcastmanager-1.0.0.aar/577e6eeccbd0ce8c8d8caf92f25fdc5b/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/print-1.0.0.aar/e2832e09b358aca8d01b079cbe92f426/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/lifecycle-viewmodel-2.0.0.aar/c805911aabd71995fbf5fa5a2c1b9601/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/interpolator-1.0.0.aar/74a792c8e6cc32da74a605885cd05ddf/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/lifecycle-livedata-2.0.0.aar/28c22bd4b172d9897bdafac314979728/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/lifecycle-livedata-core-2.0.0.aar/f9b8b093f52aa4458261fc1230da9f7f/jars/classes.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-common/2.0.0/e070ffae07452331bc5684734fce6831d531785c/lifecycle-common-2.0.0.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/core-runtime-2.0.0.aar/4e634bca572b74b04988daadb5522f89/jars/classes.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/androidx.arch.core/core-common/2.0.0/bb21b9a11761451b51624ac428d1f1bb5deeac38/core-common-2.0.0.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/androidx.annotation/annotation/1.0.0/45599f2cd5965ac05a1488fa2a5c0cdd7c499ead/annotation-1.0.0.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/1.3.11/4cbc5922a54376018307a731162ccaf3ef851a39/kotlin-stdlib-1.3.11.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-common/1.3.11/d8b8e746e279f1c4f5e08bc14a96b82e6bb1de02/kotlin-stdlib-common-1.3.11.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/13.0/919f0dfe192fb4e063e7dacadee7f8bb9a2672a9/annotations-13.0.jar:/home/lucloner/Android/Sdk/platforms/android-28/android.jar" />
+          <option name="classpath" value="$MODULE_DIR$/../library/build/intermediates/intermediate-jars/release/classes.jar:/home/lucloner/sources/zsp/library/libs/baidu_license.jar:/home/lucloner/sources/zsp/library/libs/FaceSDK.jar:/home/lucloner/sources/zsp/library/libs/online_liantian_3-1-6-3-381_0808.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/appcompat-1.0.0.aar/91cee8b5044028aa5709fada71bde5e1/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/recyclerview-1.0.0.aar/7acfc15c82264e55f0c201fb50381151/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/alerter-4.0.0.aar/8e26835314d2e1990b801b7255b52f99/jars/classes.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk7/1.3.11/4839661cf6ce3c14b65ed7dcf5b9249b44ecca16/kotlin-stdlib-jdk7-1.3.11.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/fragment-1.0.0.aar/56222a33377ad5dcd335a6f2b5d66dad/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/vectordrawable-animated-1.0.0.aar/ee2fe80457ee94d7fe5d68e32a4e38fc/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/legacy-support-core-ui-1.0.0.aar/711ac66a0e9645162408f6b6b369fa9f/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/legacy-support-core-utils-1.0.0.aar/c33c42cf0b8d4deb9dd88a570034f772/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/vectordrawable-1.0.0.aar/3b7830a6de4b11fd33b24f2b853b72a5/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/loader-1.0.0.aar/5600f17c47fbba37bac154fbbb4db827/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/viewpager-1.0.0.aar/5dae257744d9cf04ed853e7e73b96117/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/coordinatorlayout-1.0.0.aar/af27444024ebcc66b51ead1fea858fde/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/drawerlayout-1.0.0.aar/599008cfa2611e7a7c820f95abe088ef/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/slidingpanelayout-1.0.0.aar/5a1ed9a5127d0e879181578fc58c2e64/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/customview-1.0.0.aar/31be780181a4993b9705e55774d47320/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/swiperefreshlayout-1.0.0.aar/5c8a29839f1450d004e5a2d822b805b7/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/asynclayoutinflater-1.0.0.aar/72c12488d85b75f4f62c78c322ddf2eb/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/core-1.0.0.aar/95e31908907a50bfefd668dc351f986d/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/versionedparcelable-1.0.0.aar/4d5becfa4357d4702cc696b69f18d7c1/jars/classes.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/androidx.collection/collection/1.0.0/42858b26cafdaa69b6149f45dfc2894007bc2c7a/collection-1.0.0.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/cursoradapter-1.0.0.aar/d526d6a1bb14667a4c476809c4d2141e/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/lifecycle-runtime-2.0.0.aar/4c3b68d42e091104bb0f123e3725a6f9/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/documentfile-1.0.0.aar/ef548f86889e402360c0ad5ab7f2d2bd/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/localbroadcastmanager-1.0.0.aar/96fdc7ae9fd7e28fcec72a94b78c405f/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/print-1.0.0.aar/8455cdb2d3995f3474670c44daf8f71e/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/lifecycle-viewmodel-2.0.0.aar/03a7f0a9b4d74047bb5bbcbcfbbc4ae9/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/interpolator-1.0.0.aar/0226ffd125363a399bb898de72cbf784/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/lifecycle-livedata-2.0.0.aar/6fe1e78b12c2a5a24c8b326e682dcee8/jars/classes.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/lifecycle-livedata-core-2.0.0.aar/82493bba4b83f848f24207b7fec120dd/jars/classes.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-common/2.0.0/e070ffae07452331bc5684734fce6831d531785c/lifecycle-common-2.0.0.jar:/home/lucloner/.gradle/caches/transforms-1/files-1.1/core-runtime-2.0.0.aar/079ec75b7f33d40d6ce2a4c9f9e99f69/jars/classes.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/androidx.arch.core/core-common/2.0.0/bb21b9a11761451b51624ac428d1f1bb5deeac38/core-common-2.0.0.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/androidx.annotation/annotation/1.0.0/45599f2cd5965ac05a1488fa2a5c0cdd7c499ead/annotation-1.0.0.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/1.3.11/4cbc5922a54376018307a731162ccaf3ef851a39/kotlin-stdlib-1.3.11.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-common/1.3.11/d8b8e746e279f1c4f5e08bc14a96b82e6bb1de02/kotlin-stdlib-common-1.3.11.jar:/home/lucloner/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/13.0/919f0dfe192fb4e063e7dacadee7f8bb9a2672a9/annotations-13.0.jar:/media/lucloner/DATA/AndroidSDK/Android/Sdk/platforms/android-28/android.jar" />
           <option name="noStdlib" value="true" />
           <option name="noReflect" value="true" />
           <option name="moduleName" value="app_release" />
@@ -39,6 +39,9 @@
           </option>
           <option name="pluginClasspaths">
             <array />
+          </option>
+          <option name="errors">
+            <ArgumentParseErrors />
           </option>
         </compilerArguments>
       </configuration>
@@ -96,45 +99,27 @@
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/annotation_processor_list" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/apk_list" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/blame" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/build-info" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/builds" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/bundle_manifest" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/check-libraries" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/check-manifest" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/checkDebugClasspath" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/checkReleaseClasspath" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/check_manifest_result" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/compatible_screen_manifest" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/dex" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/external_libs_dex" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/incremental" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/incremental-classes" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/incremental-runtime-classes" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/incremental-verifier" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/instant-run-apk" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/instant_app_manifest" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/instant_run_app_info_output_file" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/instant_run_main_apk_resources" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/instant_run_merged_manifests" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/instant_run_split_apk_resources" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/javac" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/jniLibs" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/lint_jar" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/manifest-checker" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/merged_assets" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/merged_manifests" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/metadata_feature_manifest" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/prebuild" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/processed_res" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/reload-dex" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/res" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/resources" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/rs" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/shader_assets" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/shaders" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/signing_config" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/split-apk" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/split_list" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/symbols" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/transforms" />
       <excludeFolder url="file://$MODULE_DIR$/build/kotlin" />
@@ -152,10 +137,11 @@
     <orderEntry type="library" name="Gradle: androidx.drawerlayout:drawerlayout:1.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.documentfile:documentfile:1.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.localbroadcastmanager:localbroadcastmanager:1.0.0@aar" level="project" />
+    <orderEntry type="library" name="Gradle: __local_aars__:/home/lucloner/sources/zsp/library/libs/FaceSDK.jar:unspecified@jar" level="project" />
+    <orderEntry type="library" name="Gradle: __local_aars__:/home/lucloner/sources/zsp/library/libs/online_liantian_3-1-6-3-381_0808.jar:unspecified@jar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.recyclerview:recyclerview:1.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.lifecycle:lifecycle-runtime:2.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.lifecycle:lifecycle-livedata-core:2.0.0@aar" level="project" />
-    <orderEntry type="library" name="Gradle: __local_aars__:/home/lucloner/StudioProjects/Zhao-s_Project/library/libs/online_liantian_3-1-6-3-381_0808.jar:unspecified@jar" level="project" />
     <orderEntry type="library" name="Gradle: org.jetbrains.kotlin:kotlin-stdlib-common:1.3.11@jar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.cursoradapter:cursoradapter:1.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.11@jar" level="project" />
@@ -165,7 +151,6 @@
     <orderEntry type="library" name="Gradle: androidx.core:core:1.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.vectordrawable:vectordrawable-animated:1.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.asynclayoutinflater:asynclayoutinflater:1.0.0@aar" level="project" />
-    <orderEntry type="library" name="Gradle: __local_aars__:/home/lucloner/StudioProjects/Zhao-s_Project/library/libs/FaceSDK.jar:unspecified@jar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.interpolator:interpolator:1.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.fragment:fragment:1.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.lifecycle:lifecycle-common:2.0.0@jar" level="project" />
@@ -180,9 +165,9 @@
     <orderEntry type="library" scope="TEST" name="Gradle: org.hamcrest:hamcrest-core:1.3@jar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.annotation:annotation:1.0.0@jar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.coordinatorlayout:coordinatorlayout:1.0.0@aar" level="project" />
-    <orderEntry type="library" name="Gradle: __local_aars__:/home/lucloner/StudioProjects/Zhao-s_Project/library/libs/baidu_license.jar:unspecified@jar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.appcompat:appcompat:1.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.vectordrawable:vectordrawable:1.0.0@aar" level="project" />
+    <orderEntry type="library" name="Gradle: __local_aars__:/home/lucloner/sources/zsp/library/libs/baidu_license.jar:unspecified@jar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.arch.core:core-runtime:2.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.collection:collection:1.0.0@jar" level="project" />
     <orderEntry type="module" module-name="library" />
